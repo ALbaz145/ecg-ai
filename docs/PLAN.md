@@ -23,7 +23,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | --- | ------------------------------------ | ----------- | --------- | --------------------------------------- |
 | T01 | Infraestructura base (Docker/compose) | @devops     | Hecha ✅ (QA: 7/7) | [#1](https://github.com/ALbaz145/ecg-ai/issues/1) |
 | T02 | Esquema mínimo (ecg_records/analyses) | @db         | Hecha ✅ (QA: 8/8) | [#3](https://github.com/ALbaz145/ecg-ai/issues/3) |
-| T03 | API de análisis (POST /ecg/analyze)   | @backend    | Pendiente | [#5](https://github.com/ALbaz145/ecg-ai/issues/5) |
+| T03 | API de análisis (POST /ecg/analyze)   | @backend    | Hecha ✅ (QA: 8/8, D1-D4 fix) | [#5](https://github.com/ALbaz145/ecg-ai/issues/5) |
 | T04 | UI de carga y resultado                | @frontend   | Pendiente | [#2](https://github.com/ALbaz145/ecg-ai/issues/2) |
 | T05 | CI: lint + pruebas en PR               | @devops     | Pendiente | [#4](https://github.com/ALbaz145/ecg-ai/issues/4) |
 | T06 | Validación end-to-end del MVP          | @qa         | Pendiente | [#6](https://github.com/ALbaz145/ecg-ai/issues/6) |

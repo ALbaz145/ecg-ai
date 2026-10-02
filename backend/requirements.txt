@@ -1,11 +1,27 @@
-# Dependencias base del backend (FastAPI + PostgreSQL).
+# Dependencias del backend (FastAPI + pipeline de señal + PostgreSQL).
 # @backend puede ajustar versiones/agregar paquetes del modelo de IA aquí.
+
+# --- API y validación ---
 fastapi>=0.115
 uvicorn[standard]>=0.30
 pydantic>=2.7
 pydantic-settings>=2.3
+
+# --- Base de datos (PostgreSQL vía SQLAlchemy + Alembic) ---
 sqlalchemy>=2.0
 alembic>=1.13
 psycopg2-binary>=2.9
 python-dotenv>=1.0
+
+# --- Procesamiento de señal (filtrado, detección de picos) ---
+numpy>=1.26
+scipy>=1.11
+
+# --- Subida de archivos CSV (multipart/form-data) ---
+python-multipart>=0.0.6
+
+# --- Cliente HTTP (TestClient de FastAPI) ---
 httpx>=0.27
+
+# --- Pruebas (tests/backend/) ---
+pytest>=8.0
