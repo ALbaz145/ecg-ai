@@ -33,8 +33,10 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      # Contexto en la raíz: la imagen necesita backend/ Y db/ (modelos y
+      # migraciones Alembic) para importar db.models y ejecutar alembic.
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     env_file:
       - .env
