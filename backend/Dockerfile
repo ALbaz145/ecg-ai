@@ -11,11 +11,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Dependencias primero (aprovecha el cache de capas de Docker)
-COPY requirements.txt .
+COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Código de la aplicación
-COPY . .
+# Código de la aplicación (backend/) + modelos y migraciones (db/, alembic.ini)
+# para que se pueda importar db.models y ejecutar alembic dentro del contenedor.
+COPY backend/ ./
+COPY db/ ./db/
+COPY alembic.ini ./
 
 # Puerto de la API (uvicorn)
 EXPOSE 8000
