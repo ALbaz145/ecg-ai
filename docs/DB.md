@@ -124,28 +124,31 @@ correcto (CHECKs `jsonb_typeof`); la validación semántica
 | --------------- | ------------------------ | ------------------------------------------ |
 | `id`            | `uuid`                   | PK, `DEFAULT gen_random_uuid()`            |
 | `ecg_record_id` | `uuid`                   | NOT NULL, FK → `ecg_records.id` **ON DELETE CASCADE** |
-| `anomalia`      | `text`                   | NOT NULL, no vacío (etiqueta del modelo, p. ej. `"normal"`, `"fibrilacion_auricular"`) |
+| `anomalia`      | `text`                   | NOT NULL, no vacío (etiqueta del modelo: `"normal"`, `"taquicardia"`, `"bradicardia"`, `"arritmia"`, `"amplitud_anomala"`, `"ruido_excesivo"`, `"senal_no_valorable"`) |
 | `confianza`     | `numeric(4,3)`           | NOT NULL, **CHECK `confianza >= 0 AND confianza <= 1`** |
-| `model_version` | `text`                   | NOT NULL, no vacío (p. ej. `"mvp-0.1.0"`) |
+| `model_version` | `text`                   | NOT NULL, no vacío (p. ej. `"heuristic-mvp-0.1.0"`) |
 | `zonas_anomalas`| `jsonb`                  | NOT NULL, DEFAULT `'[]'::jsonb`, debe ser array |
 | `created_at`    | `timestamptz`            | NOT NULL, `DEFAULT now()`                  |
 
 **Contrato de `zonas_anomalas`** (ejemplo **ficticio**):
 
 ```json
-[{"inicio": 1.2, "fin": 1.45, "tipo": "latido_prematuro"}]
+[{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}]
 ```
 
-`inicio`/`fin` son **segundos** relativos al inicio de la señal;
-`tipo` es una etiqueta libre del modelo. La DB solo exige que sea
-un array JSON; la validación de la forma de cada elemento la hace
-el backend.
+`inicio`/`fin` son **índices de muestra enteros** sobre la
+señal tal como fue subida (`inicio` inclusivo, `fin`
+exclusivo) y `tipo` es una etiqueta del modelo
+(`"latido_irregular"`, `"amplitud_baja"` o
+`"amplitud_alta"`). El CHECK de PostgreSQL solo exige que
+sea un array JSONB; la semántica de cada elemento la
+valida el backend con Pydantic.
 
 **Ejemplo de fila (datos inventados):**
 
 | anomalia | confianza | model_version | zonas_anomalas |
 | --- | --- | --- | --- |
-| `latido_prematuro` | `0.987` | `mvp-0.1.0` | `[{"inicio": 1.2, "fin": 1.45, "tipo": "latido_prematuro"}]` |
+| `amplitud_anomala` | `0.987` | `heuristic-mvp-0.1.0` | `[{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}]` |
 
 ### 3.3 Restricciones (CHECKs)
 
@@ -209,7 +212,9 @@ las migraciones (según AGENTS.md, `db/` = migraciones y esquemas).
 from db.models import Base, EcgRecord, Analysis
 
 engine = create_engine(DATABASE_URL)
-Base.metadata.create_all(engine)   # solo para tests; en prod usa alembic
+# Las tablas se crean ÚNICAMENTE vía `alembic upgrade head`
+# (en el arranque del contenedor o manualmente con
+# `docker compose exec backend alembic upgrade head`).
 ```
 
 Ejemplo de uso:
@@ -223,10 +228,10 @@ session.add(registro)
 session.flush()
 session.add(Analysis(
     ecg_record_id=registro.id,
-    anomalia="latido_prematuro",
+    anomalia="amplitud_anomala",
     confianza=Decimal("0.987"),
-    model_version="mvp-0.1.0",
-    zonas_anomalas=[{"inicio": 1.2, "fin": 1.45, "tipo": "latido_prematuro"}],
+    model_version="heuristic-mvp-0.1.0",
+    zonas_anomalas=[{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}],
 ))
 session.commit()
 ```

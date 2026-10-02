@@ -97,10 +97,14 @@ class Analysis(Base):
     ``zonas_anomalas`` es un array JSON de segmentos anómalos (ejemplo
     ficticio)::
 
-        [{"inicio": 1.2, "fin": 1.45, "tipo": "latido_prematuro"}]
+        [{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}]
 
-    ``inicio``/``fin`` son segundos relativos al inicio de la señal y
-    ``tipo`` es una etiqueta libre del modelo.
+    ``inicio``/``fin`` son **índices de muestra enteros** sobre la
+    señal tal como fue subida (``inicio`` inclusivo, ``fin``
+    exclusivo) y ``tipo`` es una etiqueta del modelo (p. ej.
+    ``latido_irregular``, ``amplitud_baja``, ``amplitud_alta``).
+    El CHECK de PostgreSQL solo exige que sea un array JSONB; la
+    semántica de cada elemento la valida el backend con Pydantic.
     """
 
     __tablename__ = "analyses"
