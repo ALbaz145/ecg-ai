@@ -1,0 +1,28 @@
+# Secretos y entorno
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Datos (datasets públicos se bajan aparte; nunca datos de pacientes)
+data/
+
+# Logs y editores
+*.log
+.vscode/
+.idea/
+.DS_Store
