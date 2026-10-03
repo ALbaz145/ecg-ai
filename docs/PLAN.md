@@ -26,7 +26,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T03 | API de análisis (POST /ecg/analyze)   | @backend    | Hecha ✅ (QA: 8/8, D1-D4 fix) | [#5](https://github.com/ALbaz145/ecg-ai/issues/5) |
 | T04 | UI de carga y resultado                | @frontend   | Hecha ✅ (QA: 60/60, lint 0 err, build OK) — cerrado 2026-10-03 | [#2](https://github.com/ALbaz145/ecg-ai/issues/2) |
 | T05 | CI: lint + pruebas en PR               | @devops     | Hecha ✅ (QA: AC 6/6, sin cambios de lógica) — cerrado 2026-10-03 | [#4](https://github.com/ALbaz145/ecg-ai/issues/4) |
-| T06 | Validación end-to-end del MVP          | @qa         | En progreso | [#6](https://github.com/ALbaz145/ecg-ai/issues/6) |
+| T06 | Validación end-to-end del MVP          | @qa         | Pendiente   | [#6](https://github.com/ALbaz145/ecg-ai/issues/6) |
 
 ## Dependencias
 
@@ -51,3 +51,5 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
 
 - **2026-10-02**: Plan inicial del MVP. 6 tareas y 6 issues creados en el repo
   (labels: `backend`, `frontend`, `db`, `devops`, `qa`, `mvp`).
+- **2026-10-03**: Issues #2 (Frontend) y #4 (CI) re-validados por QA y cerrados.
+  PR #11 mergeado a `main` con squash. 43 archivos, +9,362/-34 líneas.
