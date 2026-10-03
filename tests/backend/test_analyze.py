@@ -138,7 +138,7 @@ def test_filename_opcional_se_acepta(client) -> None:
 
 # ---------------------------------------------------------------------------
 # Baja frecuencia de muestreo (D1): fs válida según el contrato
-# (1–5000 Hz) que antes causaba 500 al construir el filtro.
+# (1-5000 Hz) que antes causaba 500 al construir el filtro.
 # ---------------------------------------------------------------------------
 
 
@@ -162,7 +162,7 @@ def test_baja_frecuencia_muestreo_fs_90(client) -> None:
 
 @pytest.mark.parametrize("fs", [1, 2, 3])
 def test_frecuencia_muestreo_minima_respuesta_valida(client, fs) -> None:
-    """fs muy baja (1–3 Hz): respuesta 200 válida, nunca 500.
+    """fs muy baja (1-3 Hz): respuesta 200 válida, nunca 500.
 
     La señal no puede representar un latido (el QRS es más
     estrecho que una muestra), así que la etiqueta es la

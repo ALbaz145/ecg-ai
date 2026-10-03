@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
-
 from app.main import _find_alembic_ini, app
+from fastapi.testclient import TestClient
 
 
 def test_encuentra_alembic_ini() -> None:

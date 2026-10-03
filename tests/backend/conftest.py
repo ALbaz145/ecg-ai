@@ -26,8 +26,6 @@ import uuid  # noqa: E402
 from typing import Any  # noqa: E402
 
 import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-
 from app.main import app  # noqa: E402
 from app.repository import (  # noqa: E402
     EcgRepository,
@@ -35,6 +33,7 @@ from app.repository import (  # noqa: E402
     get_repository,
     utc_now,
 )
+from fastapi.testclient import TestClient  # noqa: E402
 
 
 class FakeRepository:

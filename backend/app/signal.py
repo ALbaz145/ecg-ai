@@ -3,7 +3,7 @@
 Pipeline de señal (paso 2 del flujo del MVP):
 
 1. **Conversión de unidades** a milivoltios (mV).
-2. **Filtrado** pasa-banda 0.5–45 Hz (Butterworth orden 4,
+2. **Filtrado** pasa-banda 0.5-45 Hz (Butterworth orden 4,
    ``sosfiltfilt`` sin fase; caída a ``sosfilt`` si la señal
    es demasiado corta).
 3. **Normalización** z-score (solo para la detección de
@@ -49,10 +49,10 @@ def to_millivolts(values: list[float], units: str) -> np.ndarray:
 
 
 def bandpass_filter(arr: np.ndarray, fs: float) -> np.ndarray:
-    """Filtro pasa-banda 0.5–45 Hz (Butterworth, orden 4).
+    """Filtro pasa-banda 0.5-45 Hz (Butterworth, orden 4).
 
     El borde alto se limita a ``Nyquist - 0.5 Hz``: con
-    frecuencias de muestreo bajas (p. ej. 50–90 Hz,
+    frecuencias de muestreo bajas (p. ej. 50-90 Hz,
     legítimas según el contrato) la banda se adapta en
     lugar de fallar. Si no cabe una banda usable
     (``Nyquist`` demasiado bajo), se devuelve la señal
@@ -110,7 +110,7 @@ def detect_r_peaks(filtered: np.ndarray, fs: float) -> RPeaks:
             np.array([], dtype=np.int64),
             np.array([], dtype=np.float64),
         )
-    refractory = max(1, int(round(REFRACTORY_S * fs)))
+    refractory = max(1, round(REFRACTORY_S * fs))
     peaks, _props = sp_signal.find_peaks(
         filtered, distance=refractory
     )
@@ -165,7 +165,7 @@ class SignalFeatures:
 def _noise_ratio(arr: np.ndarray, fs: float) -> float:
     """Fracción de la energía de la señal en banda alta.
 
-    La frecuencia de corte se limita a ``0.9 × Nyquist``
+    La frecuencia de corte se limita a ``0.9 x Nyquist``
     para que el filtro sea válido a cualquier ``fs``:
     con frecuencias de muestreo bajas no hay contenido
     representable por encima de 40 Hz, así que se mide
@@ -196,8 +196,8 @@ def extract_features(
 ) -> SignalFeatures:
     """Segmenta la señal en latidos y extrae features."""
     n_samples = original_mv.size
-    amp_win = max(1, int(round(AMP_WINDOW_S * fs)))
-    beat_win = max(1, int(round(BEAT_WINDOW_S * fs)))
+    amp_win = max(1, round(AMP_WINDOW_S * fs))
+    beat_win = max(1, round(BEAT_WINDOW_S * fs))
 
     beat_windows: list[tuple[int, int]] = []
     beat_amplitudes: list[float] = []
@@ -234,7 +234,7 @@ def extract_features(
         n_samples=n_samples,
         sample_rate_hz=sample_rate_hz,
         duration_s=n_samples / fs,
-        n_beats=int(len(beat_windows)),
+        n_beats=len(beat_windows),
         heart_rate_bpm=heart_rate_bpm,
         rr_cv=rr_cv,
         r_amplitude_mv=r_amplitude_mv,

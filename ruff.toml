@@ -1,0 +1,15 @@
+# Configuración de ruff para el backend y tests.
+# Se ejecuta en CI (.github/workflows/ci.yml) y localmente:
+#   ruff check backend/ tests/
+
+line-length = 100
+
+[lint]
+# Reglas por defecto de ruff (E4/E7/E9, F) más I (imports) y RUF (lint de ruff).
+select = ["E", "F", "I", "RUF"]
+
+ignore = [
+    # B008: usar Depends()/File()/Form() en defaults de argumentos es el
+    # idioma canónico de FastAPI (no se puede reescribir sin cambiar la API).
+    "B008",
+]
