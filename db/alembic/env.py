@@ -12,11 +12,9 @@ Resuelve la URL de conexión en este orden:
 
 from __future__ import annotations
 
-import os
 import sys
 from logging.config import fileConfig
 from pathlib import Path
-from urllib.parse import quote_plus
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
@@ -28,6 +26,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from db.models import Base  # noqa: E402  (import tras ajustar sys.path)
+from db.url import resolve_database_url  # noqa: E402
 
 # Objeto de configuración de Alembic (alembic.ini).
 config = context.config
@@ -41,16 +40,12 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    """Devuelve la URL de conexión (ver docstring del módulo)."""
-    url = os.getenv("DATABASE_URL")
-    if url:
-        return url
-    user = os.getenv("POSTGRES_USER", "ecg")
-    password = quote_plus(os.getenv("POSTGRES_PASSWORD", "cambia_en_env"))
-    database = os.getenv("POSTGRES_DB", "ecg")
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "5432")
-    return f"postgresql://{user}:{password}@{host}:{port}/{database}"
+    """Devuelve la URL de conexión (ver docstring del módulo).
+
+    Normaliza el esquema a ``postgresql+psycopg2://`` para que
+    SQLAlchemy no elija el driver psycopg 3 por defecto.
+    """
+    return resolve_database_url()
 
 
 def run_migrations_offline() -> None:
