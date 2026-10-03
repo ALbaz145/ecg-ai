@@ -27,7 +27,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T04 | UI de carga y resultado                | @frontend   | Hecha ✅ (QA: 60/60, lint 0 err, build OK) — cerrado 2026-10-03 | [#2](https://github.com/ALbaz145/ecg-ai/issues/2) |
 | T05 | CI: lint + pruebas en PR               | @devops     | Hecha ✅ (QA: AC 6/6, sin cambios de lógica) — cerrado 2026-10-03 | [#4](https://github.com/ALbaz145/ecg-ai/issues/4) |
 | T06 | Validación end-to-end del MVP          | @qa         | Rechazada por QA — defectos D1 y D2 | [#6](https://github.com/ALbaz145/ecg-ai/issues/6) |
-| T07 | Fix CORS (D1): añadir localhost:5173    | @backend    | Pendiente   | — |
+| T07 | Fix CORS (D1): añadir localhost:5173    | @backend    | Hecho      | — |
 | T08 | Fix alembic driver (D2): normalizar psycopg2 | @db  | Hecho      | — |
 
 ## Dependencias
