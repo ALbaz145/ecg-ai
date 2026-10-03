@@ -65,6 +65,8 @@ def cors_origins() -> list[str]:
     """Orígenes permitidos por CORS (separados por comas en
     ``CORS_ORIGINS``). Por defecto solo el frontend local."""
     raw = os.getenv(
-        "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "http://localhost:5173,http://127.0.0.1:5173",
     )
     return [origin.strip() for origin in raw.split(",") if origin.strip()]

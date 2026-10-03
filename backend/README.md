@@ -161,4 +161,4 @@ más reciente de ese registro).
   `docs/MODEL.md` — no es un modelo entrenado ni diagnóstico
   médico.
 - **CORS**: orígenes configurables con `CORS_ORIGINS`
-  (por defecto `http://localhost:3000,http://127.0.0.1:3000`).
+  (por defecto `http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173`).

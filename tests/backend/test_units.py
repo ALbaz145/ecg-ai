@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from app.config import resolve_database_url
+from app.config import cors_origins, resolve_database_url
 from app.repository import _to_stored
 
 from db.models import Analysis, EcgRecord
@@ -53,6 +53,22 @@ def test_normaliza_esquema_postgres(monkeypatch) -> None:
 def test_respeta_driver_explicito(monkeypatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg://u:p@h/d")
     assert resolve_database_url() == "postgresql+psycopg://u:p@h/d"
+
+
+def test_cors_permite_vite_dev_server(monkeypatch) -> None:
+    """D1/T07: el valor por defecto incluye localhost:5173 (Vite)."""
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    origins = cors_origins()
+    assert "http://localhost:5173" in origins
+    assert "http://127.0.0.1:5173" in origins
+    # No rompe lo existente.
+    assert "http://localhost:3000" in origins
+    assert "http://127.0.0.1:3000" in origins
+
+
+def test_cors_respeta_variable_entorno(monkeypatch) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", "https://ejemplo.com, https://app.ejemplo.com")
+    assert cors_origins() == ["https://ejemplo.com", "https://app.ejemplo.com"]
 
 
 def test_to_stored_convierte_decimal_a_float() -> None:
