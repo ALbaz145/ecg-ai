@@ -26,7 +26,9 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T03 | API de análisis (POST /ecg/analyze)   | @backend    | Hecha ✅ (QA: 8/8, D1-D4 fix) | [#5](https://github.com/ALbaz145/ecg-ai/issues/5) |
 | T04 | UI de carga y resultado                | @frontend   | Hecha ✅ (QA: 60/60, lint 0 err, build OK) — cerrado 2026-10-03 | [#2](https://github.com/ALbaz145/ecg-ai/issues/2) |
 | T05 | CI: lint + pruebas en PR               | @devops     | Hecha ✅ (QA: AC 6/6, sin cambios de lógica) — cerrado 2026-10-03 | [#4](https://github.com/ALbaz145/ecg-ai/issues/4) |
-| T06 | Validación end-to-end del MVP          | @qa         | Pendiente   | [#6](https://github.com/ALbaz145/ecg-ai/issues/6) |
+| T06 | Validación end-to-end del MVP          | @qa         | Rechazada por QA — defectos D1 y D2 | [#6](https://github.com/ALbaz145/ecg-ai/issues/6) |
+| T07 | Fix CORS (D1): añadir localhost:5173    | @backend    | Pendiente   | — |
+| T08 | Fix alembic driver (D2): normalizar psycopg2 | @db  | Pendiente   | — |
 
 ## Dependencias
 
@@ -53,3 +55,7 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   (labels: `backend`, `frontend`, `db`, `devops`, `qa`, `mvp`).
 - **2026-10-03**: Issues #2 (Frontend) y #4 (CI) re-validados por QA y cerrados.
   PR #11 mergeado a `main` con squash. 43 archivos, +9,362/-34 líneas.
+- **2026-10-03**: T06 rechazada por QA. Defectos bloqueantes:
+  - **D1**: CORS solo permite localhost:3000, Vite usa 5173 → @backend
+  - **D2**: alembic env.py no normaliza driver psycopg2, falla con SQLAlchemy ≥ 2.1 → @db
+  Prioridad: fix D1 y D2 antes de cerrar T06.
