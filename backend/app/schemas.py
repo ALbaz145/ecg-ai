@@ -26,7 +26,7 @@ MIN_SIGNAL_SAMPLES = 100
 MAX_SIGNAL_SAMPLES = 2_000_000
 #: Frecuencia de muestreo mínima (Hz).
 MIN_SAMPLE_RATE_HZ = 1
-#: Frecuencia de muestreo máxima (Hz) — ECG típico 250–1000 Hz.
+#: Frecuencia de muestreo máxima (Hz) - ECG típico 250-1000 Hz.
 MAX_SAMPLE_RATE_HZ = 5000
 
 

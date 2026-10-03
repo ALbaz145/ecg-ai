@@ -1,0 +1,451 @@
+/* ============================================================
+   ECG-AI — estilos globales
+   Paleta verificada para WCAG AA (contraste de texto ≥ 4.5:1,
+   controles/foco ≥ 3:1). Se usan valores literales (sin
+   var()) para que las pruebas de axe en jsdom puedan resolver
+   los colores con getComputedStyle.
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%; /* 16 px base, respeta preferencias del UA */
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #111827; /* gray-900 sobre blanco: ≈ 16:1 */
+  background: #ffffff;
+}
+
+.contenedor {
+  max-width: 68rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+/* --- Enlace para saltar (visible al recibir foco) ---------- */
+.saltar {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: #111827;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.saltar:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+/* --- Encabezado fijo: el aviso es SIEMPRE visible ---------- */
+.encabezado {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #ffffff;
+  border-bottom: 2px solid #111827;
+  box-shadow: 0 1px 4px rgba(17, 24, 39, 0.12);
+}
+
+.encabezado-inner {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  padding-top: 0.6rem;
+}
+
+.encabezado h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.tagline {
+  margin: 0;
+  color: #374151; /* gray-700 sobre blanco: ≈ 9.5:1 */
+  font-size: 0.95rem;
+}
+
+.disclaimer {
+  margin: 0.5rem 0 0;
+  padding: 0.45rem 1rem;
+  text-align: center;
+  font-weight: 700;
+  /* amber-900 sobre amber-100: ≈ 8.6:1 */
+  color: #78350f;
+  background: #fef3c7;
+  border-top: 2px solid #92400e;
+  border-bottom: 2px solid #92400e;
+}
+
+/* --- Contenido / secciones ---------------------------------- */
+.contenido {
+  padding-top: 1.25rem;
+  padding-bottom: 2.5rem;
+}
+
+.seccion {
+  margin-bottom: 2.5rem;
+}
+
+.seccion h2 {
+  font-size: 1.3rem;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid #d1d5db;
+}
+
+/* --- Región aria-live (errores y estado) --------------------- */
+.region-viva {
+  min-height: 1rem;
+  margin-bottom: 1rem;
+}
+
+.aviso-error {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  border: 2px solid #b91c1c;
+  /* red-700 sobre red-50: ≈ 5.6:1 */
+  color: #b91c1c;
+  background: #fef2f2;
+  font-weight: 600;
+}
+
+.aviso-info {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  border: 2px solid #166534;
+  /* green-800 sobre green-50: ≈ 7.4:1 */
+  color: #166534;
+  background: #f0fdf4;
+  font-weight: 600;
+}
+
+/* --- Formulario --------------------------------------------- */
+.campo {
+  margin-bottom: 1.25rem;
+  border: none;
+  padding: 0;
+}
+
+.campo legend,
+.campo > label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  padding: 0;
+}
+
+.ayuda {
+  margin: 0.1rem 0 0.35rem;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+textarea,
+input[type='number'],
+input[type='file'] {
+  font: inherit;
+  color: #111827;
+  background: #ffffff;
+  border: 2px solid #4b5563; /* gray-600: ≥ 3:1 sobre blanco */
+  border-radius: 6px;
+  padding: 0.5rem;
+  width: 100%;
+  max-width: 34rem;
+}
+
+textarea {
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    'Liberation Mono',
+    monospace;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+textarea[aria-invalid='true'],
+input[aria-invalid='true'] {
+  border-color: #b91c1c;
+}
+
+.error-campo {
+  margin: 0.35rem 0 0;
+  color: #b91c1c; /* red-700 sobre blanco: ≈ 5.9:1 */
+  font-weight: 700;
+}
+
+.resumen-errores {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 2px solid #b91c1c;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.resumen-errores p {
+  margin: 0 0 0.35rem;
+}
+
+.resumen-errores ul {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+/* --- Botones ------------------------------------------------- */
+.boton {
+  font: inherit;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.boton-principal {
+  color: #ffffff; /* blanco sobre blue-700: ≈ 7.3:1 */
+  background: #1d4ed8;
+}
+
+.boton-principal:hover:not(:disabled) {
+  background: #1e40af; /* blue-800: ≈ 8.6:1 con blanco */
+}
+
+.boton-principal:disabled {
+  color: #ffffff; /* blanco sobre gray-500: ≈ 4.8:1 */
+  background: #6b7280;
+  cursor: not-allowed;
+}
+
+.boton-secundario {
+  color: #1d4ed8;
+  background: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.boton-secundario:hover {
+  background: #eff6ff;
+}
+
+/* Focus visible en todo (teclado): negro sobre blanco 21:1,
+   sobre blue-700 ≈ 3.13:1 (cumple 3:1 para indicador de
+   foco en cualquier fondo de la app). */
+*:focus-visible {
+  outline: 3px solid #000000;
+  outline-offset: 2px;
+}
+
+/* --- Gráfico -------------------------------------------------- */
+.grafico {
+  margin: 0;
+}
+
+.grafico-contenedor {
+  overflow-x: auto;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.5rem;
+  background: #ffffff;
+}
+
+.grafico-nota {
+  margin: 0.5rem 0 0;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.zonas h3 {
+  font-size: 1.05rem;
+  margin: 1rem 0 0.35rem;
+}
+
+.zonas-vacia {
+  margin: 0;
+  color: #374151;
+}
+
+.zonas-lista {
+  margin: 0;
+  padding-left: 1.4rem;
+}
+
+.zonas-lista li {
+  margin-bottom: 0.35rem;
+}
+
+/* --- Resultado ------------------------------------------------- */
+.resultado-resumen {
+  margin: 0;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  border: 2px solid #166534;
+  color: #111827;
+  background: #f0fdf4;
+  font-size: 1.05rem;
+}
+
+.resultado-datos {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.dato dt {
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+
+.dato dd {
+  margin: 0;
+}
+
+.confianza {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.confianza-barra {
+  flex: 1 1 16rem;
+  max-width: 26rem;
+  height: 1.5rem;
+  background: #e5e7eb;
+  border: 2px solid #4b5563;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.confianza-relleno {
+  height: 100%;
+  background: #1d4ed8;
+}
+
+.confianza-texto {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.confianza-nota {
+  margin: 0.25rem 0 0;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+/* --- Historial -------------------------------------------------- */
+.historial-lista {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.historial-lista button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: left;
+  font: inherit;
+  color: #111827;
+  background: #ffffff;
+  border: 2px solid #4b5563;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.historial-lista button:hover {
+  background: #eff6ff;
+}
+
+.historial-lista button[aria-current='true'] {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.historial-num {
+  font-weight: 700;
+  color: #374151;
+}
+
+.historial-info {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.historial-info span {
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.historial-accion {
+  margin-left: auto;
+  font-weight: 700;
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* --- Pie --------------------------------------------------------- */
+.pie {
+  border-top: 1px solid #d1d5db;
+  padding-top: 1.25rem;
+  padding-bottom: 2rem;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.pie p {
+  margin: 0 0 0.5rem;
+}
+
+/* --- Solo lectura para lectores de pantalla ----------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

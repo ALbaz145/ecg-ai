@@ -8,7 +8,6 @@ confianza ∈ [0,1] y la forma de las zonas.
 from __future__ import annotations
 
 import numpy as np
-
 from app.model import (
     LABEL_AMPLITUD,
     LABEL_ARRHYTHMIA,
