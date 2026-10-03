@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-"""Imagen del backend: FastAPI + modelo de IA (Python 3.11)."""
+# Imagen del backend: FastAPI + modelo de IA (Python 3.11).
 
 FROM python:3.11-slim
 
