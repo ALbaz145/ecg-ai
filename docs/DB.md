@@ -24,7 +24,8 @@ POSTGRES_DB=ecg
 ```
 
 La URL de conexión (`DATABASE_URL`) se resuelve así, tanto en
-`db/alembic/env.py` como en el backend:
+`db/alembic/env.py` como en el backend (implementación única en
+`db/url.py::resolve_database_url`):
 
 1. `DATABASE_URL` si está definida. `docker-compose.yml` ya la
    inyecta al servicio `backend`:
@@ -33,6 +34,13 @@ La URL de conexión (`DATABASE_URL`) se resuelve así, tanto en
    `POSTGRES_DB` con `POSTGRES_HOST` (por defecto `localhost`) y
    `POSTGRES_PORT` (por defecto `5432`) — útil para desarrollo
    fuera de Docker.
+
+En ambos casos el esquema se **normaliza a `postgresql+psycopg2://`**
+(`db/url.py::normalize_database_url`): SQLAlchemy ≥ 2.1 resuelve
+`postgresql://` al driver `psycopg` (v3), que no es una dependencia
+del proyecto (D2). Las URLs que ya incluyen driver explícito
+(`postgresql+psycopg2://`, `postgresql+psycopg://`, …) se respetan
+tal cual.
 
 > La DB **no** se expone al host en `docker-compose.yml`. Para
 > inspeccionarla desde el host en desarrollo, descomenta el
