@@ -35,12 +35,27 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | ID  | Tarea                                          | Responsable | Estado  | Issue |
 | --- | ---------------------------------------------- | ----------- | ------- | ----- |
 | T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Hecha ✅ (QA final 4/4 2026-10-14, T15a-d cerradas) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
-| T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Abierta | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
+| T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | En curso (desglosada T09a-d) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Abierta | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
+
+### Desglose T09 — Pipeline MIT-BIH (padre #12)
+
+| ID   | Subtarea | Responsable | Estado  | Issue |
+| ---- | -------- | ----------- | ------- | ----- |
+| T09a | Descarga/cache MIT-BIH con `wfdb` (48 registros, a `data/`, sin commitear) | @backend | Abierta | [#23](https://github.com/ALbaz145/ecg-ai/issues/23) |
+| T09b | Loader registro → señal lead único + fs + anotaciones, ventanas ±0.4s (`signal.py`) | @backend | Abierta | [#24](https://github.com/ALbaz145/ecg-ai/issues/24) |
+| T09c | Etiquetado AAMI + dataset serializable (X, y, paciente_id) | @backend | Abierta | [#25](https://github.com/ALbaz145/ecg-ai/issues/25) |
+| T09d | Validación QA del pipeline (checklist #12) | @qa | Abierta | [#26](https://github.com/ALbaz145/ecg-ai/issues/26) |
+
+Criterios por subtarea:
+- **T09a**: `download/cache` a `data/mit-bih/` con `wfdb`; re-ejecución usa caché; `data/` y `*.dat/*.hea/*.atr` siguen ignorados; tests con mocks (sin red).
+- **T09b**: por registro devuelve señal lead 0, `fs` y anotaciones (muestra + símbolo); ventanas de latido compatibles con `BEAT_WINDOW_S=0.4s` de `signal.py`; tests con `wfdb.rdsamp/rdann` mockeados.
+- **T09c**: mapeo de símbolos a clases AAMI (N/S/V/F/Q); `X` (n_latidos × ventana), `y`, `paciente_id`; `save/load` reproducible (npz/joblib); tests de formas y mapeo.
+- **T09d**: @qa valida T09a-c contra los 5 AC de #12 antes de cerrar T09 (incluido “sin datos commiteados”).
 
 ### Desglose T15 — Dependencias y CI para ML (padre #18)
 
