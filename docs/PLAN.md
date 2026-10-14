@@ -34,13 +34,28 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 
 | ID  | Tarea                                          | Responsable | Estado  | Issue |
 | --- | ---------------------------------------------- | ----------- | ------- | ----- |
-| T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Abierta | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
+| T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | En curso (desglosada T15a-d) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Abierta | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Abierta | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
+
+### Desglose T15 — Dependencias y CI para ML (padre #18)
+
+| ID   | Subtarea | Responsable | Estado  | Issue |
+| ---- | -------- | ----------- | ------- | ----- |
+| T15a | Fijar deps ML en `backend/requirements.txt` (wfdb, scikit-learn, joblib con versión fija) | @devops | Abierta | [#19](https://github.com/ALbaz145/ecg-ai/issues/19) |
+| T15b | Docker build con nuevas deps (imagen backend construye y `/health` OK) | @devops | Abierta | [#20](https://github.com/ALbaz145/ecg-ai/issues/20) |
+| T15c | CI + `.gitignore` dataset (lint+tests en verde, MIT-BIH y `*.pkl/joblib` ignorados) | @devops | Abierta | [#21](https://github.com/ALbaz145/ecg-ai/issues/21) |
+| T15d | Validación QA de T15 (smoke imports + checklist #18) | @qa | Abierta | [#22](https://github.com/ALbaz145/ecg-ai/issues/22) |
+
+Criterios por subtarea:
+- **T15a**: `pip install -r backend/requirements.txt` OK en limpio; `import wfdb, sklearn, joblib` OK; sin romper `fastapi/numpy/scipy`; versiones fijadas (`==`).
+- **T15b**: `docker build` backend OK; `compose up backend` healthy (`/health` 200); capa de deps aprovecha caché.
+- **T15c**: CI `ruff + pytest` y `eslint + vitest` en verde; `git check-ignore` confirma `data/`, `*.dat`, `*.hea`, `*.atr`, `*.pkl`, `*.joblib` ignorados; dataset NO commiteado.
+- **T15d**: @qa valida T15a-c contra los 4 AC de #18 antes de cerrar T15.
 
 ### Notas Fase 2
 
