@@ -46,7 +46,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 
 | ID   | Subtarea | Responsable | Estado  | Issue |
 | ---- | -------- | ----------- | ------- | ----- |
-| T15a | Fijar deps ML en `backend/requirements.txt` (wfdb, scikit-learn, joblib con versión fija) | @devops | Abierta | [#19](https://github.com/ALbaz145/ecg-ai/issues/19) |
+| T15a | Fijar deps ML en `backend/requirements.txt` (wfdb, scikit-learn, joblib con versión fija) | @devops | Hecha ⏳ pendiente QA (@devops: 4/4, rama `feature/ml-deps-t15a` 42ad5a5) | [#19](https://github.com/ALbaz145/ecg-ai/issues/19) |
 | T15b | Docker build con nuevas deps (imagen backend construye y `/health` OK) | @devops | Abierta | [#20](https://github.com/ALbaz145/ecg-ai/issues/20) |
 | T15c | CI + `.gitignore` dataset (lint+tests en verde, MIT-BIH y `*.pkl/joblib` ignorados) | @devops | Abierta | [#21](https://github.com/ALbaz145/ecg-ai/issues/21) |
 | T15d | Validación QA de T15 (smoke imports + checklist #18) | @qa | Abierta | [#22](https://github.com/ALbaz145/ecg-ai/issues/22) |
