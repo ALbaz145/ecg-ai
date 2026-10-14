@@ -30,6 +30,26 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T07 | Fix CORS (D1): añadir localhost:5173    | @backend    | Hecho      | — |
 | T08 | Fix alembic driver (D2): normalizar psycopg2 | @db  | Hecho      | — |
 
+## Fase 2 — Modelo real con MIT-BIH
+
+| ID  | Tarea                                          | Responsable | Estado  | Issue |
+| --- | ---------------------------------------------- | ----------- | ------- | ----- |
+| T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Abierta | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
+| T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Abierta | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
+| T10 | Baseline scikit-learn, split por paciente      | @backend    | Abierta | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
+| T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
+| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
+| T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
+| T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
+
+### Notas Fase 2
+
+- **Baseline primero**: scikit-learn antes de cualquier red neuronal.
+- **Split por paciente**: ningún paciente en train y test a la vez (evitar fuga).
+- **Métricas obligatorias**: sensibilidad, especificidad, matriz de confusión por clase.
+- Cero datos reales de pacientes propios: solo MIT-BIH público vía `wfdb`; el dataset no se commitea.
+- Cada tarea la valida @qa antes de cerrarse.
+
 ## Dependencias
 
 ```
