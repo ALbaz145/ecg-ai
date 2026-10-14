@@ -21,6 +21,21 @@ build/
 # Datos (datasets públicos se bajan aparte; nunca datos de pacientes)
 data/
 
+# Fase 2 — MIT-BIH y artefactos ML (T15c, issue #21).
+# Registros fisiológicos del MIT-BIH (PhysioNet): nunca se commitean,
+# se descargan aparte con wfdb.
+*.dat
+*.hea
+*.atr
+
+# Artefactos de entrenamiento/inferencia: se regeneran, no se versionan.
+*.pkl
+*.joblib
+*.h5
+*.onnx
+models/
+mlruns/
+
 # Logs y editores
 *.log
 .vscode/
