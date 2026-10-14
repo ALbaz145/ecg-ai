@@ -34,7 +34,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 
 | ID  | Tarea                                          | Responsable | Estado  | Issue |
 | --- | ---------------------------------------------- | ----------- | ------- | ----- |
-| T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | En curso (desglosada T15a-d) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
+| T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Hecha ✅ (QA final 4/4 2026-10-14, T15a-d cerradas) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Abierta | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Abierta | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
@@ -49,7 +49,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T15a | Fijar deps ML en `backend/requirements.txt` (wfdb, scikit-learn, joblib con versión fija) | @devops | Hecha ✅ (QA: 4/4 2026-10-14, rama `feature/ml-deps-t15a` 42ad5a5) | [#19](https://github.com/ALbaz145/ecg-ai/issues/19) |
 | T15b | Docker build con nuevas deps (imagen backend construye y `/health` OK) | @devops | Hecha ✅ (QA aprobado, build OK, img 941MB, /health 200) | [#20](https://github.com/ALbaz145/ecg-ai/issues/20) |
 | T15c | CI + `.gitignore` dataset (lint+tests en verde, MIT-BIH y `*.pkl/joblib` ignorados) | @devops | Hecha ✅ (QA aprobado, ruff clean, pytest 107 passed) | [#21](https://github.com/ALbaz145/ecg-ai/issues/21) |
-| T15d | Validación QA de T15 (smoke imports + checklist #18) | @qa | Abierta | [#22](https://github.com/ALbaz145/ecg-ai/issues/22) |
+| T15d | Validación QA de T15 (smoke imports + checklist #18) | @qa | Hecha ✅ (QA final 4/4, cierra #18) | [#22](https://github.com/ALbaz145/ecg-ai/issues/22) |
 
 Criterios por subtarea:
 - **T15a**: `pip install -r backend/requirements.txt` OK en limpio; `import wfdb, sklearn, joblib` OK; sin romper `fastapi/numpy/scipy`; versiones fijadas (`==`).
