@@ -109,3 +109,10 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   - **D1**: CORS solo permite localhost:3000, Vite usa 5173 → @backend
   - **D2**: alembic env.py no normaliza driver psycopg2, falla con SQLAlchemy ≥ 2.1 → @db
   Prioridad: fix D1 y D2 antes de cerrar T06.
+- **2026-11-05**: Fase 2 integrada en `main` (PRs #28-#31, CI verde, squash):
+  docs de Fase 2 + deps ML de T15 (cerrada 2026-10-14, QA 4/4) + T09a.
+- **2026-11-05**: T09a #23, T09b #24 y T09c #25 cerradas (QA aprobado; T09c
+  tras 2 rondas con fixes D-1..D-4). PRs #30-#35. `pytest` 137 → 200 passed.
+  Limpieza: 11 ramas integradas borradas, repo solo con `main`.
+- **2026-11-05 (pausa)**: siguiente paso al reanudar → **T09d (#26, @qa)**:
+  validación final de T09 contra los 5 AC de #12 → cierra #12 → T10 (#13).
