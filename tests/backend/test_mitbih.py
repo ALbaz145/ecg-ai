@@ -1,9 +1,12 @@
-"""Pruebas de descarga y caché MIT-BIH (T09a, issue #23).
+"""Pruebas de descarga y caché MIT-BIH (T09a, issue #23; D-1 en #24).
 
 Ninguna prueba toca la red: ``app.mitbih._load_wfdb`` se sustituye por
 un doble (``FakeWfdb``) inyectado con ``monkeypatch``, de modo que la
 suite tampoco necesita wfdb instalado. El dataset real **nunca** se
 descarga durante los tests.
+
+La mitigación **D-1** (issue #24) exige que la caché de un registro
+incluya el ``.atr`` además del ``.hea`` y el ``.dat``.
 """
 
 from __future__ import annotations
@@ -120,8 +123,8 @@ def test_cache_parcial_solo_descarga_lo_faltante(monkeypatch, tmp_path) -> None:
     _install_fake(monkeypatch, fake)
     dest = tmp_path / "mit-bih"
     dest.mkdir()
-    (dest / "100.hea").write_text("x", encoding="utf-8")
-    (dest / "100.dat").write_text("x", encoding="utf-8")
+    for suffix in mitbih._SUFFIXES:
+        (dest / f"100{suffix}").write_text("x", encoding="utf-8")
 
     mitbih.download_mitbih(dest=dest, records=["100", "101"])
 
@@ -192,8 +195,8 @@ def test_error_de_red_excepcion_clara_y_cache_limpia(monkeypatch, tmp_path) -> N
     dest = tmp_path / "mit-bih"
     # Caché previa que debe conservarse pese al fallo.
     dest.mkdir()
-    (dest / "100.hea").write_text("x", encoding="utf-8")
-    (dest / "100.dat").write_text("x", encoding="utf-8")
+    for suffix in mitbih._SUFFIXES:
+        (dest / f"100{suffix}").write_text("x", encoding="utf-8")
 
     with pytest.raises(ConnectionError) as excinfo:
         mitbih.download_mitbih(dest=dest, records=["100", "101"])
@@ -220,3 +223,43 @@ def test_error_no_os_se_propaga_sin_envolver(monkeypatch, tmp_path) -> None:
 
     # Tampoco quedan descargas a medias del registro intentado.
     assert not list((tmp_path / "mit-bih").glob("101.*"))
+
+
+# ---------------------------------------------------------------------------
+# Mitigación D-1 (issue #24): la caché exige .hea + .dat + .atr
+# ---------------------------------------------------------------------------
+
+
+def test_d1_cache_requiere_los_tres_sufijos(tmp_path) -> None:
+    """is_cached solo es True con .hea, .dat **y** .atr presentes."""
+    dest = tmp_path / "mit-bih"
+    dest.mkdir()
+    for suffix in mitbih._SUFFIXES:
+        (dest / f"100{suffix}").write_text("x", encoding="utf-8")
+    assert mitbih.is_cached(dest, "100") is True
+
+    # Falta el .atr (descarga interrumpida) → no cacheado (D-1).
+    (dest / "100.atr").unlink()
+    assert mitbih.is_cached(dest, "100") is False
+
+    # Cualquier otro sufijo que falte también invalida la caché.
+    (dest / "100.atr").write_text("x", encoding="utf-8")
+    (dest / "100.dat").unlink()
+    assert mitbih.is_cached(dest, "100") is False
+
+
+def test_d1_sin_atr_se_vuelve_a_descargar(monkeypatch, tmp_path) -> None:
+    """Un .hea+.dat sin .atr no está cacheado: wfdb se vuelve a invocar."""
+    fake = FakeWfdb()
+    _install_fake(monkeypatch, fake)
+    dest = tmp_path / "mit-bih"
+    dest.mkdir()
+    # Simula un proceso matado tras cabecera y señal, sin anotaciones.
+    (dest / "100.hea").write_text("x", encoding="utf-8")
+    (dest / "100.dat").write_text("x", encoding="utf-8")
+
+    mitbih.download_mitbih(dest=dest, records=["100", "101"])
+
+    assert fake.dl_calls[0]["records"] == ["100", "101"]
+    assert (dest / "100.atr").is_file()
+    assert mitbih.is_cached(dest, "100") is True
