@@ -46,8 +46,8 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 
 | ID   | Subtarea | Responsable | Estado  | Issue |
 | ---- | -------- | ----------- | ------- | ----- |
-| T09a | Descarga/cache MIT-BIH con `wfdb` (48 registros, a `data/`, sin commitear) | @backend | Abierta | [#23](https://github.com/ALbaz145/ecg-ai/issues/23) |
-| T09b | Loader registro → señal lead único + fs + anotaciones, ventanas ±0.4s (`signal.py`) | @backend | Abierta | [#24](https://github.com/ALbaz145/ecg-ai/issues/24) |
+| T09a | Descarga/cache MIT-BIH con `wfdb` (48 registros, a `data/`, sin commitear) | @backend | Hecha ✅ (QA: 5/5, 9bb4eee, 10 tests, 117 passed) | [#23](https://github.com/ALbaz145/ecg-ai/issues/23) |
+| T09b | Loader registro → señal lead único + fs + anotaciones, ventanas ±0.4s (`signal.py`) | @backend | Abierta (+ mitigar D-1: caché debe exigir `.atr`) | [#24](https://github.com/ALbaz145/ecg-ai/issues/24) |
 | T09c | Etiquetado AAMI + dataset serializable (X, y, paciente_id) | @backend | Abierta | [#25](https://github.com/ALbaz145/ecg-ai/issues/25) |
 | T09d | Validación QA del pipeline (checklist #12) | @qa | Abierta | [#26](https://github.com/ALbaz145/ecg-ai/issues/26) |
 
