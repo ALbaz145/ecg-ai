@@ -2,6 +2,16 @@
 
 Registro de cambios relevantes de la aplicación. Formato: `AAAA-MM-DD` · categoría · descripción.
 
+## 2026-11-05
+
+- **chore(deps)**: Dependencias ML fijadas en `backend/requirements.txt` — `wfdb==4.3.1`, `scikit-learn==1.8.0`, `joblib==1.5.2` (T15a, #19) — e `.gitignore` de Fase 2: `*.dat, *.hea, *.atr, *.pkl, *.joblib, *.h5, *.onnx, models/, mlruns/` (T15c, #21). Integrados vía PR #29 (QA 4/4; T15 cerrada #18).
+- **docs**: Fase 2 completa en `docs/PLAN.md` (objetivo, tareas T09-T15, desgloses T09a-d y T15a-d con criterios, estados y responsables) + `docs/CHANGELOG.md` (PRs #28, #31, #33, #35).
+- **feat(data)**: Descarga y caché de MIT-BIH con `wfdb` (`backend/app/mitbih.py`): 48 registros canónicos verificados contra PhysioNet, re-descarga evitada, errores de red gestionados (T09a, #23, QA 5/5).
+- **feat(data)**: Loader MIT-BIH (`backend/app/mitbih_load.py`): señal lead único, `fs`, anotaciones y ventanas ±0.4 s reutilizando `BEAT_WINDOW_S`; caché exige `.hea+.dat+.atr` (D-1) (T09b, #24, QA 5/5).
+- **feat(data)**: Dataset AAMI serializable (`backend/app/mitbih_dataset.py`): mapeo N/S/V/F/Q con no-mapeados → Q, `X` float32 / `y` / `paciente_id` por latido, NPZ con `schema_version` + `dataset_id` sha256 revalidado; validación de dominio `y` (fixes D-1..D-4) (T09c, #25, QA 2 rondas).
+- **chore**: Integración en `main` con CI verde (PRs #28-#35) y limpieza de 11 ramas ya mergeadas; el repo solo conserva `main`.
+- **test**: Suite backend de 107 → **200 pruebas** (sin red, verificadas con `unshare -rn`).
+
 ## 2026-10-03
 
 - **docs**: Fase 2 planificada en `docs/PLAN.md` (T09–T15) e issues #12–#18 creados: modelo real con MIT-BIH/wfdb, baseline sklearn con split por paciente, métricas, integración API y pruebas.
