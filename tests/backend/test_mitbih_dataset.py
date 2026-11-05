@@ -82,15 +82,40 @@ def _build_sample(monkeypatch, tmp_path) -> EcgDataset:
     return build_dataset(["100", "101"], dest=tmp_path)
 
 
-def _rewrite_meta(path: Path, **changes) -> None:
+def _rewrite_meta(path: Path, *, drop: tuple[str, ...] = (), **changes) -> None:
     """Reescribe solo la clave ``meta`` de un NPZ (para simular errores)."""
     with np.load(path, allow_pickle=False) as data:
         arrays = {key: data[key] for key in data.files}
     meta = json.loads(str(arrays["meta"].item()))
+    for key in drop:
+        meta.pop(key, None)
     meta.update(changes)
     arrays["meta"] = np.array(json.dumps(meta, sort_keys=True))
     with path.open("wb") as fh:
         np.savez(fh, **arrays)
+
+
+def _rewrite_raw_meta(path: Path, raw) -> None:
+    """Sustituye la clave ``meta`` del NPZ por ``raw`` sin interpretarla."""
+    with np.load(path, allow_pickle=False) as data:
+        arrays = {key: data[key] for key in data.files}
+    arrays["meta"] = np.array(raw)
+    with path.open("wb") as fh:
+        np.savez(fh, **arrays)
+
+
+def _handmade_ds(**overrides) -> EcgDataset:
+    """Dataset de 4 filas construido a mano (sin ``build_dataset``)."""
+    fields: dict = {
+        "X": np.zeros((4, WIDTH), dtype=np.float32),
+        "y": np.array(["N"] * 4, dtype=str),
+        "paciente_id": np.array(["100"] * 4, dtype=str),
+        "records": ("100",),
+        "lead": 0,
+        "fs": FS,
+    }
+    fields.update(overrides)
+    return EcgDataset(**fields)
 
 
 # ---------------------------------------------------------------------------
@@ -109,10 +134,11 @@ def _rewrite_meta(path: Path, **changes) -> None:
         ("V", "V"), ("E", "V"),
         # F — fusión.
         ("F", "F"),
-        # Q — desconocido: latidos Q (/ f Q) y símbolos no-latido de mitdb.
+        # Q — desconocido: latidos Q (/ f Q) y no-latido real de mitdb
+        # (! [ ] x | ~ + "); p/t no están en los .atr y van a Q igual.
         ("/", "Q"), ("f", "Q"), ("Q", "Q"),
         ("!", "Q"), ("[", "Q"), ("]", "Q"), ("x", "Q"), ("|", "Q"),
-        ("~", "Q"), ("+", "Q"), ("p", "Q"), ("t", "Q"),
+        ("~", "Q"), ("+", "Q"), ('"', "Q"), ("p", "Q"), ("t", "Q"),
     ],
 )
 def test_to_aami_mapeo_de_cada_clase(symbol: str, expected: str) -> None:
@@ -326,6 +352,27 @@ def test_criterio_ancho_coherente_con_beat_windows() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _check_alignment: tipos no-ndarray → ValueError (nunca AttributeError)
+# ---------------------------------------------------------------------------
+
+
+def test_check_alignment_rechaza_y_no_ndarray() -> None:
+    """``y`` en lista → ValueError que nombra el campo (no AttributeError)."""
+    X = np.zeros((2, WIDTH), dtype=np.float32)
+
+    with pytest.raises(ValueError, match="y debe ser un ndarray"):
+        mitbih_dataset._check_alignment(X, ["N", "N"], np.array(["100", "100"]))
+
+
+def test_check_alignment_rechaza_paciente_id_no_ndarray() -> None:
+    """``paciente_id`` en lista → ValueError que nombra el campo."""
+    X = np.zeros((2, WIDTH), dtype=np.float32)
+
+    with pytest.raises(ValueError, match="paciente_id debe ser un ndarray"):
+        mitbih_dataset._check_alignment(X, np.array(["N", "N"]), ["100", "100"])
+
+
+# ---------------------------------------------------------------------------
 # save_dataset / load_dataset: NPZ con metadatos
 # ---------------------------------------------------------------------------
 
@@ -459,3 +506,113 @@ def test_eq_con_otro_tipo_es_falso(monkeypatch, tmp_path) -> None:
 
     assert (ds == "no-es-dataset") is False
     assert ds != "no-es-dataset"
+
+
+# ---------------------------------------------------------------------------
+# Contratos de validación: no-ndarray, dominio de y y metadatos (QA T09c)
+# ---------------------------------------------------------------------------
+
+
+def test_save_rechaza_y_no_ndarray(tmp_path) -> None:
+    """``save_dataset`` con ``y`` en lista → ValueError (no AttributeError)."""
+    ds = _handmade_ds(y=["N"] * 4)
+
+    with pytest.raises(ValueError, match="y debe ser un ndarray"):
+        save_dataset(ds, tmp_path / "lista.npz")
+
+    assert not (tmp_path / "lista.npz").exists()
+
+
+def test_save_rechaza_paciente_id_no_ndarray(tmp_path) -> None:
+    """``save_dataset`` con ``paciente_id`` en lista → ValueError."""
+    ds = _handmade_ds(paciente_id=["100"] * 4)
+
+    with pytest.raises(ValueError, match="paciente_id debe ser un ndarray"):
+        save_dataset(ds, tmp_path / "lista.npz")
+
+    assert not (tmp_path / "lista.npz").exists()
+
+
+def test_save_rechaza_clase_aami_invalida(tmp_path) -> None:
+    """``y`` con clases fuera de ``AAMI_CLASSES`` → ValueError que las nombra."""
+    ds = _handmade_ds(y=np.array(["Z", "W", "N", "N"], dtype=str))
+
+    with pytest.raises(ValueError, match="Clases AAMI inválidas") as excinfo:
+        save_dataset(ds, tmp_path / "malas.npz")
+
+    message = str(excinfo.value)
+    assert "Z" in message and "W" in message
+    assert not (tmp_path / "malas.npz").exists()
+
+
+@pytest.mark.parametrize("raw", ["[]", 42], ids=["lista-json", "entero"])
+def test_load_meta_json_no_objeto_error(monkeypatch, tmp_path, raw) -> None:
+    """JSON válido pero no-dict en ``meta`` → ValueError (no AttributeError)."""
+    ds = _build_sample(monkeypatch, tmp_path)
+    path = save_dataset(ds, tmp_path / "dataset.npz")
+    _rewrite_raw_meta(path, raw)
+
+    with pytest.raises(ValueError, match="objeto JSON"):
+        load_dataset(path)
+
+
+def test_load_meta_json_corrupto_error(monkeypatch, tmp_path) -> None:
+    """JSON roto en ``meta`` → ValueError legible (Metadatos ilegibles)."""
+    ds = _build_sample(monkeypatch, tmp_path)
+    path = save_dataset(ds, tmp_path / "dataset.npz")
+    _rewrite_raw_meta(path, '{"schema_version": ')
+
+    with pytest.raises(ValueError, match="Metadatos ilegibles"):
+        load_dataset(path)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [{"lead": None}, {"records": 100}, {"fs": "abc"}],
+    ids=["lead-null", "records-entero", "fs-cadena"],
+)
+def test_load_metadatos_tipos_invalidos_error(monkeypatch, tmp_path, changes) -> None:
+    """``lead``/``fs``/``records`` con tipos malos → ValueError con contexto."""
+    ds = _build_sample(monkeypatch, tmp_path)
+    path = save_dataset(ds, tmp_path / "dataset.npz")
+    _rewrite_meta(path, **changes)
+
+    with pytest.raises(ValueError, match="Metadatos inválidos"):
+        load_dataset(path)
+
+
+def test_load_rechaza_clase_aami_invalida(monkeypatch, tmp_path) -> None:
+    """Un NPZ con ``y`` fuera de ``AAMI_CLASSES`` no se carga en silencio."""
+    ds = _build_sample(monkeypatch, tmp_path)
+    path = save_dataset(ds, tmp_path / "dataset.npz")
+    with np.load(path, allow_pickle=False) as data:
+        arrays = {key: data[key] for key in data.files}
+    arrays["y"] = np.array(["Z", "W", "N", "N", "N"])
+    with path.open("wb") as fh:
+        np.savez(fh, **arrays)
+
+    with pytest.raises(ValueError, match="Clases AAMI inválidas") as excinfo:
+        load_dataset(path)
+
+    message = str(excinfo.value)
+    assert "Z" in message and "W" in message
+
+
+def test_load_rechaza_aami_classes_de_meta_alterado(monkeypatch, tmp_path) -> None:
+    """``meta['aami_classes']`` alterado → ValueError (no se abre en silencio)."""
+    ds = _build_sample(monkeypatch, tmp_path)
+    path = save_dataset(ds, tmp_path / "dataset.npz")
+    _rewrite_meta(path, aami_classes=["N", "S"])
+
+    with pytest.raises(ValueError, match="aami_classes"):
+        load_dataset(path)
+
+
+def test_load_rechaza_aami_classes_ausente(monkeypatch, tmp_path) -> None:
+    """``meta['aami_classes']`` ausente → ValueError (clave obligatoria)."""
+    ds = _build_sample(monkeypatch, tmp_path)
+    path = save_dataset(ds, tmp_path / "dataset.npz")
+    _rewrite_meta(path, drop=("aami_classes",))
+
+    with pytest.raises(ValueError, match="aami_classes"):
+        load_dataset(path)

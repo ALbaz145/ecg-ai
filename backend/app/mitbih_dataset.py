@@ -17,12 +17,13 @@ Decisiones de diseño (los criterios que el issue #25 exige documentar):
   et al., IEEE TBME 2004): ``N ← {N, L, R, e, j}``,
   ``S ← {A, a, J, S}``, ``V ← {V, E}``, ``F ← {F}``, ``Q ← {/, f, Q}``.
   **No mapeados → Q (criterio explícito, nunca en silencio)**: los
-  símbolos no-latido de ``mitdb`` (``!``, ``[``, ``]``, ``x``, ``|``,
-  ``~``, ``+``, ``p``, ``t``) y *cualquier* símbolo desconocido se
-  etiquetan ``Q`` (desconocido/artefacto) en vez de descartarse: se
-  prefiere una fila supervisada ``Q`` a perder anotaciones sin dejar
-  rastro. La **única** exclusión de filas es la ventana (abajo): ningún
-  símbolo se descarta por su clase.
+  símbolos no-latido reales de los 48 registros de ``mitdb`` (``!``,
+  ``[``, ``]``, ``x``, ``|``, ``~``, ``+``, ``"``) y *cualquier* otro
+  símbolo desconocido —p. ej. ``p`` y ``t``, que no aparecen en los
+  ``.atr`` reales— se etiquetan ``Q`` (desconocido/artefacto) en vez de
+  descartarse: se prefiere una fila supervisada ``Q`` a perder
+  anotaciones sin dejar rastro. La **única** exclusión de filas es la
+  ventana (abajo): ningún símbolo se descarta por su clase.
 - **Ventanas de longitud fija** — ``beat_windows`` recorta contra los
   bordes de la señal, así que una ventana puede ser más corta que el
   nominal ``2 * round(BEAT_WINDOW_S * fs)`` muestras (p. ej. el primer
@@ -37,7 +38,11 @@ Decisiones de diseño (los criterios que el issue #25 exige documentar):
   autodescriptivo y serializable **sin pickle**; a diferencia de los
   códigos enteros 0-4, el orden no puede desincronizarse entre el
   archivo y el código que lo carga. T10 lo codifica con un dict sobre
-  ``AAMI_CLASSES`` o con ``sklearn.preprocessing.LabelEncoder``.
+  ``AAMI_CLASSES`` o con ``sklearn.preprocessing.LabelEncoder``. El
+  dominio se valida en ``save_dataset`` y en ``load_dataset``
+  (``ValueError`` que nombra las clases inválidas), igual que
+  ``meta["aami_classes"]`` al cargar: un NPZ con clases fuera de las 5
+  no se abre en silencio.
 - **``paciente_id`` por latido** — array de strings con el ID del
   registro repetido en cada fila (``"100"``…): obligatorio para el
   split por paciente de T10 (no por archivo ni global).
@@ -100,9 +105,10 @@ AAMI_CLASSES: tuple[str, ...] = ("N", "S", "V", "F", "Q")
 #: - ``S`` (ectópico supraventricular): A, a, J, S
 #: - ``V`` (ectópico ventricular): V, E
 #: - ``F`` (fusión): F
-#: - ``Q`` (desconocido): /, f, Q **+** símbolos no-latido de ``mitdb``
-#:   (``!``, ``[``, ``]``, ``x``, ``|``, ``~``, ``+``, ``p``, ``t``) y
-#:   cualquier símbolo no listado (ver :func:`to_aami`).
+#: - ``Q`` (desconocido): /, f, Q **+** símbolos no-latido reales de
+#:   los 48 registros de ``mitdb`` (``!``, ``[``, ``]``, ``x``, ``|``,
+#:   ``~``, ``+``, ``"``) y cualquier símbolo no listado, p. ej. ``p``
+#:   y ``t``, que no aparecen en los ``.atr`` (ver :func:`to_aami`).
 MAP_AAMI: dict[str, str] = {
     # N — latido normal.
     "N": "N",
@@ -121,6 +127,9 @@ MAP_AAMI: dict[str, str] = {
     # F — fusión de latido normal y ventricular.
     "F": "F",
     # Q — desconocido/artefacto (latidos Q + no-latido + no mapeados).
+    # No-latido real presente en los 48 .atr: ! [ ] x | ~ + " . Los
+    # símbolos p y t no aparecen en mitdb; se mantienen aquí y también
+    # caen en Q (como cualquier otro no listado, vía to_aami).
     "/": "Q",
     "f": "Q",
     "Q": "Q",
@@ -131,6 +140,7 @@ MAP_AAMI: dict[str, str] = {
     "|": "Q",
     "~": "Q",
     "+": "Q",
+    '"': "Q",
     "p": "Q",
     "t": "Q",
 }
@@ -153,9 +163,10 @@ def to_aami(symbol: str) -> str:
     -------
     str
         Una de :data:`AAMI_CLASSES`. Los símbolos ausentes de
-        :data:`MAP_AAMI` —incluidos los no-latido de ``mitdb`` y
-        cualquier desconocido— devuelven :data:`UNMAPPED_AAMI_CLASS`
-        (``"Q"``): se etiqueta en vez de descartar en silencio.
+        :data:`MAP_AAMI` —cualquier otro símbolo desconocido o no
+        presente en los 48 ``.atr`` reales— devuelven
+        :data:`UNMAPPED_AAMI_CLASS` (``"Q"``): se etiqueta en vez de
+        descartar en silencio.
     """
     return MAP_AAMI.get(symbol, UNMAPPED_AAMI_CLASS)
 
@@ -268,7 +279,13 @@ def _compute_dataset_id(
 
 
 def _check_alignment(X: np.ndarray, y: np.ndarray, paciente_id: np.ndarray) -> None:
-    """Valida la forma de los tres arrays del dataset (guardar/cargar)."""
+    """Valida la forma de los tres arrays del dataset (guardar/cargar).
+
+    Cada array debe ser un ``ndarray`` con la forma y el dtype del
+    contrato (``X`` 2-D float32; ``y``/``paciente_id`` 1-D de strings)
+    y las tres filas alineadas. Los tipos no-ndarray también son
+    ``ValueError`` (nunca ``AttributeError``/``TypeError``).
+    """
     if not isinstance(X, np.ndarray) or X.ndim != 2:
         raise ValueError(
             f"X debe ser un ndarray 2-D (n_latidos por ventana); "
@@ -277,10 +294,17 @@ def _check_alignment(X: np.ndarray, y: np.ndarray, paciente_id: np.ndarray) -> N
         )
     if X.dtype != np.float32:
         raise ValueError(f"X debe ser float32; recibido: {X.dtype}.")
-    if y.ndim != 1 or paciente_id.ndim != 1:
+    if not isinstance(y, np.ndarray) or y.ndim != 1:
         raise ValueError(
-            f"y y paciente_id deben ser 1-D; recibido: {y.shape} y "
-            f"{paciente_id.shape}."
+            f"y debe ser un ndarray 1-D (clases AAMI por latido); "
+            f"recibido: {type(y).__name__} con forma "
+            f"{getattr(y, 'shape', None)!r}."
+        )
+    if not isinstance(paciente_id, np.ndarray) or paciente_id.ndim != 1:
+        raise ValueError(
+            f"paciente_id debe ser un ndarray 1-D (ID por latido); "
+            f"recibido: {type(paciente_id).__name__} con forma "
+            f"{getattr(paciente_id, 'shape', None)!r}."
         )
     if y.dtype.kind not in "US" or paciente_id.dtype.kind not in "US":
         raise ValueError(
@@ -292,6 +316,32 @@ def _check_alignment(X: np.ndarray, y: np.ndarray, paciente_id: np.ndarray) -> N
             "Filas desalineadas: X, y y paciente_id deben tener la misma "
             f"longitud (recibido: {X.shape[0]}, {y.shape[0]}, "
             f"{paciente_id.shape[0]})."
+        )
+
+
+def _check_y_domain(y: np.ndarray, *, origin: str) -> None:
+    """Valida que ``y`` solo contenga clases de :data:`AAMI_CLASSES`.
+
+    Parameters
+    ----------
+    y:
+        Array 1-D de etiquetas (el contrato de forma ya está
+        verificado por :func:`_check_alignment`).
+    origin:
+        De dónde salen los datos, para el mensaje (p. ej. ``"el
+        dataset"`` o la ruta del archivo).
+
+    Raises
+    ------
+    ValueError
+        Si alguna etiqueta está fuera de :data:`AAMI_CLASSES`; el
+        mensaje nombra las clases inválidas.
+    """
+    invalid = sorted(set(map(str, y)) - set(AAMI_CLASSES))
+    if invalid:
+        raise ValueError(
+            f"Clases AAMI inválidas en {origin}: {invalid}. "
+            f"Se admite únicamente {list(AAMI_CLASSES)} (AAMI_CLASSES)."
         )
 
 
@@ -415,8 +465,9 @@ def save_dataset(ds: EcgDataset, path: str | Path) -> Path:
     ----------
     ds:
         Dataset a guardar; se valida antes de escribir (formas
-        alineadas, ``X`` float32 2-D, ``y``/``paciente_id`` strings y
-        ``dataset_id`` coherente con el contenido si está informado).
+        alineadas, ``X`` float32 2-D, ``y``/``paciente_id`` strings,
+        clases de ``y`` dentro de :data:`AAMI_CLASSES` y ``dataset_id``
+        coherente con el contenido si está informado).
     path:
         Ruta destino; los directorios padre se crean si faltan.
 
@@ -428,11 +479,13 @@ def save_dataset(ds: EcgDataset, path: str | Path) -> Path:
     Raises
     ------
     ValueError
-        Si el dataset no cumple el contrato de formas/dtype o su
+        Si el dataset no cumple el contrato de formas/dtype, ``y``
+        contiene clases fuera de :data:`AAMI_CLASSES` o su
         ``dataset_id`` no coincide con el contenido (dataset modificado
         tras ``build_dataset``).
     """
     _check_alignment(ds.X, ds.y, ds.paciente_id)
+    _check_y_domain(ds.y, origin="el dataset")
     if ds.dataset_id:
         expected = _compute_dataset_id(
             ds.X, ds.y, ds.paciente_id, ds.records, ds.lead, ds.fs
@@ -484,10 +537,13 @@ def load_dataset(path: str | Path) -> EcgDataset:
     ------
     ValueError
         Si falta alguna clave (``X``, ``y``, ``paciente_id``, ``meta``),
-        los metadatos no son JSON, la ``schema_version`` no es la
-        soportada (:data:`SCHEMA_VERSION`), las formas no están
-        alineadas o el ``dataset_id`` no coincide con el contenido
-        (archivo alterado).
+        los metadatos no son JSON, no son un objeto (dict) o sus campos
+        ``lead``/``fs``/``records`` no son legibles, la
+        ``schema_version`` no es la soportada (:data:`SCHEMA_VERSION`),
+        ``meta["aami_classes"]`` no coincide con
+        :data:`AAMI_CLASSES`, ``y`` contiene clases fuera de
+        :data:`AAMI_CLASSES`, las formas no están alineadas o el
+        ``dataset_id`` no coincide con el contenido (archivo alterado).
     """
     path = Path(path)
     with np.load(path, allow_pickle=False) as data:
@@ -505,6 +561,12 @@ def load_dataset(path: str | Path) -> EcgDataset:
         meta = json.loads(str(raw_meta.item() if raw_meta.ndim == 0 else raw_meta))
     except (json.JSONDecodeError, AttributeError, ValueError) as exc:
         raise ValueError(f"Metadatos ilegibles en {path}: {exc}.") from exc
+    if not isinstance(meta, dict):
+        # JSON válido pero no-objeto ("[]", 42…): el contrato es un dict.
+        raise ValueError(
+            f"Metadatos ilegibles en {path}: se esperaba un objeto JSON "
+            f"(dict); recibido: {type(meta).__name__} ({meta!r})."
+        )
 
     version = meta.get("schema_version")
     if version != SCHEMA_VERSION:
@@ -513,10 +575,33 @@ def load_dataset(path: str | Path) -> EcgDataset:
             f"(este código espera {SCHEMA_VERSION})."
         )
 
+    aami_classes = meta.get("aami_classes")
+    if aami_classes != list(AAMI_CLASSES):
+        raise ValueError(
+            f"meta['aami_classes'] inesperado en {path}: {aami_classes!r}; "
+            f"se esperaba {list(AAMI_CLASSES)} (AAMI_CLASSES)."
+        )
+
     _check_alignment(X, y, paciente_id)
-    records = tuple(meta.get("records", ()))
-    lead = int(meta.get("lead", 0))
-    fs = float(meta.get("fs", float("nan")))
+    _check_y_domain(y, origin=f"el archivo {path}")
+
+    try:
+        lead = int(meta.get("lead", 0))
+        fs = float(meta.get("fs", float("nan")))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"Metadatos inválidos en {path}: lead/fs ilegibles "
+            f"({type(exc).__name__}: {exc})."
+        ) from exc
+    raw_records = meta.get("records", ())
+    if not isinstance(raw_records, (list, tuple)) or not all(
+        isinstance(record, str) for record in raw_records
+    ):
+        raise ValueError(
+            f"Metadatos inválidos en {path}: records debe ser una lista "
+            f"de strings; recibido: {raw_records!r}."
+        )
+    records = tuple(raw_records)
     dataset_id = str(meta.get("dataset_id", ""))
     if dataset_id:
         expected = _compute_dataset_id(X, y, paciente_id, records, lead, fs)
