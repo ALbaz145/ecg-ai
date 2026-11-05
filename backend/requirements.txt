@@ -23,5 +23,16 @@ python-multipart>=0.0.6
 # --- Cliente HTTP (TestClient de FastAPI) ---
 httpx>=0.27
 
+# --- Machine learning (T15a, issue #19) ---
+# Versiones fijas (==) para reproducibilidad en CI (Python 3.12) y Docker
+# (python:3.11-slim). Elegidas por tener wheels para cp311/cp312/cp313/cp314:
+# scikit-learn 1.5.x no publica wheels cp314 y bloquearía la verificación
+# local en Python 3.14; 1.8.0 sí cubre 3.11/3.12/3.14. No usar 1.9.x todavía
+# para no arrastrar la última major sin probar a T09 (entrenamiento).
+# wfdb es rueda pura de Python (py3-none-any), sin problema de versión.
+wfdb==4.3.1
+scikit-learn==1.8.0
+joblib==1.5.2
+
 # --- Pruebas (tests/backend/) ---
 pytest>=8.0
