@@ -2,7 +2,8 @@
 
 Módulo de **datos** (T09a, issue #23): solo descarga y cachea los
 archivos WFDB públicos de ``mitdb`` en ``data/mit-bih/`` (gitignored).
-El procesamiento de la señal (T09b) sigue en ``app.signal``.
+La lectura de la señal y las anotaciones (T09b, issue #24) vive en
+``app.mitbih_load``; el procesamiento de la señal en ``app.signal``.
 
 Decisiones de diseño:
 
@@ -11,9 +12,13 @@ Decisiones de diseño:
   ``RECORDS`` del servidor los ``.hea``/``.dat``/``.atr`` de cada
   registro (lee el header remoto para conocer los ``.dat`` reales) y
   los deja planos en ``dest`` (``keep_subdirs=False``).
-- **Caché a nivel de registro**: si ``<rec>.hea`` **y** ``<rec>.dat``
-  ya existen en ``dest``, el registro se considera cacheado y no se
-  invoca wfdb en absoluto (segunda llamada = cero red, cero imports).
+- **Caché a nivel de registro** (mitigación **D-1**): si ``<rec>.hea``,
+  ``<rec>.dat`` **y** ``<rec>.atr`` ya existen en ``dest``, el registro
+  se considera cacheado y no se invoca wfdb en absoluto (segunda llamada
+  = cero red, cero imports). Exigir también el ``.atr`` da un registro
+  **completo por cacheado**: un proceso matado a mitad de descarga no
+  deja un registro "cacheado" sin anotaciones (``load_record`` de
+  ``app.mitbih_load`` las necesita).
 - **wfdb perezoso**: se importa dentro de la descarga (``_load_wfdb``)
   para no acoplar el import de la app al paquete pesado y para que las
   pruebas inyecten un doble sin red ni wfdb instalado.
@@ -82,12 +87,16 @@ def _load_wfdb():
 def is_cached(dest: Path, record: str) -> bool:
     """¿Está ``record`` cacheado en ``dest``?
 
-    Un registro se considera cacheado cuando su cabecera (``.hea``)
-    **y** su señal (``.dat``) ya existen localmente. Las anotaciones
-    (``.atr``) se descargan junto con el registro la primera vez, pero
-    no participan en el criterio de caché.
+    Un registro se considera cacheado cuando su cabecera (``.hea``),
+    su señal (``.dat``) **y** sus anotaciones (``.atr``) ya existen
+    localmente: solo así tiene sentido para ``app.mitbih_load``.
+    Exigir el ``.atr`` (mitigación **D-1**) evita dar por cacheado un
+    registro cuya descarga se interrumpió tras ``.hea``/``.dat`` y que
+    quedaría sin anotaciones.
     """
-    return (dest / f"{record}.hea").is_file() and (dest / f"{record}.dat").is_file()
+    return all(
+        (dest / f"{record}{suffix}").is_file() for suffix in _SUFFIXES
+    )
 
 
 def _purge_incomplete(dest: Path, records: list[str]) -> None:
@@ -128,9 +137,9 @@ def download_mitbih(
 ) -> Path:
     """Descarga (o reutiliza desde caché) registros MIT-BIH con wfdb.
 
-    Idempotente: un registro cuyo ``.hea`` y ``.dat`` ya existen en
-    ``dest`` no se vuelve a descargar, así que la segunda llamada no
-    vuelve a tocar wfdb ni la red.
+    Idempotente: un registro cuyo ``.hea``, ``.dat`` y ``.atr`` ya
+    existen en ``dest`` no se vuelve a descargar, así que la segunda
+    llamada no vuelve a tocar wfdb ni la red.
 
     Parameters
     ----------
