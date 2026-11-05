@@ -48,7 +48,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | ---- | -------- | ----------- | ------- | ----- |
 | T09a | Descarga/cache MIT-BIH con `wfdb` (48 registros, a `data/`, sin commitear) | @backend | Hecha ✅ (QA: 5/5, 9bb4eee, 10 tests, 117 passed) | [#23](https://github.com/ALbaz145/ecg-ai/issues/23) |
 | T09b | Loader registro → señal lead único + fs + anotaciones, ventanas ±0.4s (`signal.py`) | @backend | Hecha ✅ (QA: 5/5, 73f2c7f, 137 passed, D-1 mitigado) | [#24](https://github.com/ALbaz145/ecg-ai/issues/24) |
-| T09c | Etiquetado AAMI + dataset serializable (X, y, paciente_id) | @backend | Abierta | [#25](https://github.com/ALbaz145/ecg-ai/issues/25) |
+| T09c | Etiquetado AAMI + dataset serializable (X, y, paciente_id) | @backend | Hecha ⏳ pendiente QA (commit a88f3ba, mitbih_dataset.py, 48 tests, 185 passed) | [#25](https://github.com/ALbaz145/ecg-ai/issues/25) |
 | T09d | Validación QA del pipeline (checklist #12) | @qa | Abierta | [#26](https://github.com/ALbaz145/ecg-ai/issues/26) |
 
 Criterios por subtarea:
