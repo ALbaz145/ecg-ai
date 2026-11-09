@@ -2,6 +2,11 @@
 
 Registro de cambios relevantes de la aplicación. Formato: `AAAA-MM-DD` · categoría · descripción.
 
+## 2026-11-09
+
+- **test**: T09 (pipeline MIT-BIH) cerrada — validación final de @qa 5/5 sin defectos (#26, #12): E2E mockeado download→load→build→save→load coherente entre módulos, cobertura 96%, flujo MVP sin cambios. Issues #23-#26 cerrados.
+- **chore**: Backlog menor de observaciones T09 (`.gitignore` `*.npz` global, `zip` estricto, 2 tests de cobertura) → issue #37, no bloquea T10.
+
 ## 2026-11-05
 
 - **chore(deps)**: Dependencias ML fijadas en `backend/requirements.txt` — `wfdb==4.3.1`, `scikit-learn==1.8.0`, `joblib==1.5.2` (T15a, #19) — e `.gitignore` de Fase 2: `*.dat, *.hea, *.atr, *.pkl, *.joblib, *.h5, *.onnx, models/, mlruns/` (T15c, #21). Integrados vía PR #29 (QA 4/4; T15 cerrada #18).
