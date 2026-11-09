@@ -37,7 +37,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Hecha ✅ (QA final 4/4 2026-10-14, T15a-d cerradas) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Hecha ✅ (QA: 5/5 sin defectos, 197bbaf, 255 passed) | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
-| T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
+| T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
@@ -119,4 +119,10 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
 - **2026-11-09**: **T09 cerrada** — T09d #26 y padre #12 APROBADOS por @qa
   (5/5, sin defectos; E2E mockeado download→load→build→save→load coherente,
   cobertura 96%, flujo MVP intacto). Backlog menor O-1/O-3/O-5/O-6 → issue #37.
-  **Siguiente: T10 (#13, @backend)** baseline sklearn con split por paciente.
+- **2026-11-09**: **T10 cerrada** — baseline sklearn (#13, @qa 5/5 sin defectos):
+  split por paciente, 14 features de signal.py, 255 tests. PRs #39-#40.
+- **2026-11-09**: **T13 cerrada** — métricas validadas con ENTRENAMIENTO REAL
+  de los 48 registros MIT-BIH (#16, @qa, 0 defectos): split sin fuga (38/10
+  pacientes), accuracy 0,5158 / sens_macro 0,3584 / spec_macro 0,8823, control
+  con fuga +16 pts demuestra que el split importa. Nota F: soporte 4 en test.
+  **Siguiente: T11 (#14, @backend)** integrar modelo en POST /ecg/analyze.
