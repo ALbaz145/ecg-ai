@@ -6,6 +6,8 @@ Registro de cambios relevantes de la aplicación. Formato: `AAAA-MM-DD` · categ
 
 - **test**: T09 (pipeline MIT-BIH) cerrada — validación final de @qa 5/5 sin defectos (#26, #12): E2E mockeado download→load→build→save→load coherente entre módulos, cobertura 96%, flujo MVP sin cambios. Issues #23-#26 cerrados.
 - **chore**: Backlog menor de observaciones T09 (`.gitignore` `*.npz` global, `zip` estricto, 2 tests de cobertura) → issue #37, no bloquea T10.
+- **feat(model)**: Baseline scikit-learn con split por paciente (#13, @qa 5/5 sin defectos): `backend/app/baseline.py` — split de IDs anti-fuga, 14 features por latido reutilizando `signal.py`, Pipeline(Imputer→Scaler→LR balanced), métricas por clase AAMI (sensibilidad/especificidad/CM 5×5), joblib con `model_version`+`dataset_id` validados. Suite 200→255 tests (PRs #39-#40).
+- **test**: Métricas del baseline validadas con entrenamiento REAL de los 48 registros MIT-BIH (#16): 112.552 latidos, split 38/10 pacientes sin fuga, accuracy 0,5158 · sens_macro 0,3584 · spec_macro 0,8823; control con fuga por muestra +16 pts de accuracy demuestra la ausencia de fuga; determinismo con `random_state=42` confirmado.
 
 ## 2026-11-05
 
