@@ -125,4 +125,6 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   de los 48 registros MIT-BIH (#16, @qa, 0 defectos): split sin fuga (38/10
   pacientes), accuracy 0,5158 / sens_macro 0,3584 / spec_macro 0,8823, control
   con fuga +16 pts demuestra que el split importa. Nota F: soporte 4 en test.
-  **Siguiente: T11 (#14, @backend)** integrar modelo en POST /ecg/analyze.
+- **2026-11-09 (pausa)**: siguiente paso al reanudar → **T11 (#14, @backend)**:
+  integrar el modelo real (baseline joblib de T10) en `POST /ecg/analyze` →
+  luego T14 (#17, @qa) → T12 (#15, @backend) → cierra Fase 2. Backlog #37.
