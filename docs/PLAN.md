@@ -36,7 +36,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | --- | ---------------------------------------------- | ----------- | ------- | ----- |
 | T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Hecha ✅ (QA final 4/4 2026-10-14, T15a-d cerradas) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
-| T10 | Baseline scikit-learn, split por paciente      | @backend    | Abierta | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
+| T10 | Baseline scikit-learn, split por paciente      | @backend    | Hecha ⏳ pendiente QA (commit 197bbaf, baseline.py 14 features, 55 tests, 255 passed) | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
