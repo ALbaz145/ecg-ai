@@ -35,7 +35,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | ID  | Tarea                                          | Responsable | Estado  | Issue |
 | --- | ---------------------------------------------- | ----------- | ------- | ----- |
 | T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Hecha ✅ (QA final 4/4 2026-10-14, T15a-d cerradas) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
-| T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | En curso (desglosada T09a-d) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
+| T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Abierta | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Abierta | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
@@ -49,7 +49,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T09a | Descarga/cache MIT-BIH con `wfdb` (48 registros, a `data/`, sin commitear) | @backend | Hecha ✅ (QA: 5/5, 9bb4eee, 10 tests, 117 passed) | [#23](https://github.com/ALbaz145/ecg-ai/issues/23) |
 | T09b | Loader registro → señal lead único + fs + anotaciones, ventanas ±0.4s (`signal.py`) | @backend | Hecha ✅ (QA: 5/5, 73f2c7f, 137 passed, D-1 mitigado) | [#24](https://github.com/ALbaz145/ecg-ai/issues/24) |
 | T09c | Etiquetado AAMI + dataset serializable (X, y, paciente_id) | @backend | Hecha ✅ (QA: 2 rondas, D-1..D-4 corregidos, 200 passed) | [#25](https://github.com/ALbaz145/ecg-ai/issues/25) |
-| T09d | Validación QA del pipeline (checklist #12) | @qa | Abierta | [#26](https://github.com/ALbaz145/ecg-ai/issues/26) |
+| T09d | Validación QA del pipeline (checklist #12) | @qa | Hecha ✅ (QA final 5/5, cierra #12) | [#26](https://github.com/ALbaz145/ecg-ai/issues/26) |
 
 Criterios por subtarea:
 - **T09a**: `download/cache` a `data/mit-bih/` con `wfdb`; re-ejecución usa caché; `data/` y `*.dat/*.hea/*.atr` siguen ignorados; tests con mocks (sin red).
@@ -116,3 +116,7 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   Limpieza: 11 ramas integradas borradas, repo solo con `main`.
 - **2026-11-05 (pausa)**: siguiente paso al reanudar → **T09d (#26, @qa)**:
   validación final de T09 contra los 5 AC de #12 → cierra #12 → T10 (#13).
+- **2026-11-09**: **T09 cerrada** — T09d #26 y padre #12 APROBADOS por @qa
+  (5/5, sin defectos; E2E mockeado download→load→build→save→load coherente,
+  cobertura 96%, flujo MVP intacto). Backlog menor O-1/O-3/O-5/O-6 → issue #37.
+  **Siguiente: T10 (#13, @backend)** baseline sklearn con split por paciente.
