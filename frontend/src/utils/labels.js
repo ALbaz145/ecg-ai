@@ -14,7 +14,7 @@ export const ANOMALIAS = {
   amplitud_anomala: 'Amplitud anómala del complejo QRS',
   ruido_excesivo: 'Ruido excesivo',
   senal_no_valorable: 'Señal no valorable',
-  // Agregado AAMI con modelo real (backend/app/inference.py: CLASE_AAMI → anomalia)
+  // Agregado AAMI con modelo real (backend/app/inference.py: AAMI_TO_ANOMALIA → anomalia)
   arritmia_supraventricular: 'Arritmia supraventricular',
   arritmia_ventricular: 'Arritmia ventricular',
   latido_fusion: 'Latido de fusión',
@@ -28,7 +28,7 @@ export const ZONAS_TIPO = {
   taquicardia: 'Taquicardia',
   bradicardia: 'Bradicardia',
   ruido_excesivo: 'Ruido excesivo',
-  // Una zona por latido no-N (backend/app/inference.py: CLASE_AAMI → tipo)
+  // Una zona por latido no-N (backend/app/inference.py: AAMI_TO_ZONA → tipo)
   latido_supraventricular: 'Latido supraventricular',
   latido_ventricular: 'Latido ventricular',
   latido_fusion: 'Latido de fusión',

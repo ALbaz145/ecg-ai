@@ -7,7 +7,7 @@ import {
 } from '../utils/labels.js';
 
 // Claves AAMI nuevas que emite el backend con modelo real
-// (backend/app/inference.py: CLASE_AAMI → anomalia / tipo).
+// (backend/app/inference.py: AAMI_TO_ANOMALIA / AAMI_TO_ZONA → anomalia / tipo).
 const ANOMALIAS_AAMI = {
   arritmia_supraventricular: 'Arritmia supraventricular',
   arritmia_ventricular: 'Arritmia ventricular',
