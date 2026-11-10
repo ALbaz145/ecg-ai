@@ -38,7 +38,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Hecha ✅ (QA: 5/5 sin defectos, 197bbaf, 255 passed) | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
-| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | En curso (desglose T11a-e, issues #43-#47) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
+| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Hecha ✅ (T11a-e cerradas; falta QA final T14) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
 
@@ -52,10 +52,10 @@ fs del modelo** (360 Hz MIT-BIH) antes de inferir.
 | ID   | Subtarea | Responsable | Estado  | Issue |
 | ---- | -------- | ----------- | ------- | ----- |
 | T11a | Loader del artefacto (`MODEL_PATH`, caché, fallback al heurístico) | @backend | Hecha ✅ (QA: APROBADO + D-1 cerrado, 270 tests, PR #49) | [#43](https://github.com/ALbaz145/ecg-ai/issues/43) |
-| T11b | Inferencia real en `pipeline.run_analysis` (resample, AAMI, agregado) | @backend | Abierta | [#44](https://github.com/ALbaz145/ecg-ai/issues/44) |
-| T11c | CLI `python -m app.train_model` (genera el artefacto, sin commitear) | @backend | Abierta | [#45](https://github.com/ALbaz145/ecg-ai/issues/45) |
-| T11d | Docker: volumen `data/` + `MODEL_PATH` en compose | @devops | Abierta | [#46](https://github.com/ALbaz145/ecg-ai/issues/46) |
-| T11e | Etiquetas AAMI en `frontend/src/utils/labels.js` | @frontend | Abierta (deps: T11b) | [#47](https://github.com/ALbaz145/ecg-ai/issues/47) |
+| T11b | Inferencia real en `pipeline.run_analysis` (resample, AAMI, agregado) | @backend | Hecha ✅ (QA: APROBADO sin defectos, PR #51, 310 tests) | [#44](https://github.com/ALbaz145/ecg-ai/issues/44) |
+| T11c | CLI `python -m app.train_model` (genera el artefacto, sin commitear) | @backend | Hecha ✅ (QA: APROBADO, PR #53, 331 tests; D-2 fix PR #56) | [#45](https://github.com/ALbaz145/ecg-ai/issues/45) |
+| T11d | Docker: volumen `data/` + `MODEL_PATH` en compose | @devops | Hecha ✅ (QA: APROBADO, PR #54, up real con/sin artefacto) | [#46](https://github.com/ALbaz145/ecg-ai/issues/46) |
+| T11e | Etiquetas AAMI en `frontend/src/utils/labels.js` | @frontend | Hecha ✅ (QA: APROBADO, PR #52, 73 tests; P3 fix PR #55) | [#47](https://github.com/ALbaz145/ecg-ai/issues/47) |
 
 Criterios por subtarea:
 - **T11a**: `get_real_model() -> BaselineModel | None` con caché por proceso y
@@ -173,3 +173,18 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   con caché thread-safe, `reset_model_cache()`, `None` + warning ante
   artefacto ausente/corrupto/ruta inválida (nunca excepción al request),
   270 tests. Nota: el baseline real era 255 tests (PLAN decía 244).
+- **2026-11-10**: **T11b-e cerradas** (QA APROBADO en las 4; PRs #51, #53,
+  #54, #52): inferencia real en `run_analysis` (resampleo `resample_poly` al
+  fs del modelo, zonas en índices originales, vocabulario AAMI en español,
+  confianza de `predict_proba`, umbral no-N 0,20, fallback heurístico
+  intacto); CLI `train_model` (métricas stdout, sin red, exit 0/1/2);
+  volumen `./data:/app/data:ro` + `MODEL_PATH` en compose (up real
+  verificado con/sin artefacto); etiquetas AAMI en `labels.js` (consistencia
+  exacta 11/11 y 10/10 con `inference.py`). Fixes posteriores: **D-x**
+  (mayor, preexistente: suite aislada de `MODEL_PATH` con fixture autouse,
+  17 failed → 0) y **D-2** (`~` en `--dest/--data-dir`) en PR #56; **P3**
+  (comentarios `CLASE_AAMI` → constantes reales) en PR #55. 336 tests
+  backend + 73 frontend en verde.
+- **2026-11-10 (pausa)**: siguiente paso al reanudar → **T14 (#17, @qa)**:
+  validación final de T11 (API con modelo real) → cierra #14 → T12 (#15,
+  @backend, docs/MODEL.md) → Fase 2 completa. Backlog #37.
