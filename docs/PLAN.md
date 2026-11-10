@@ -38,9 +38,42 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Hecha ✅ (QA: 5/5 sin defectos, 197bbaf, 255 passed) | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
-| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Abierta | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
+| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | En curso (desglose T11a-e, issues #43-#47) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
+
+### Desglose T11 — Integrar modelo real en POST /ecg/analyze (padre #14)
+
+Decisiones de diseño (2026-11-09): **MODEL_PATH + script de entrenamiento**
+(el artefacto no se commitea; fallback al heurístico si falta), **etiquetas
+AAMI en español** en la respuesta (agregado por latido) y **resampleo al
+fs del modelo** (360 Hz MIT-BIH) antes de inferir.
+
+| ID   | Subtarea | Responsable | Estado  | Issue |
+| ---- | -------- | ----------- | ------- | ----- |
+| T11a | Loader del artefacto (`MODEL_PATH`, caché, fallback al heurístico) | @backend | Abierta | [#43](https://github.com/ALbaz145/ecg-ai/issues/43) |
+| T11b | Inferencia real en `pipeline.run_analysis` (resample, AAMI, agregado) | @backend | Abierta | [#44](https://github.com/ALbaz145/ecg-ai/issues/44) |
+| T11c | CLI `python -m app.train_model` (genera el artefacto, sin commitear) | @backend | Abierta | [#45](https://github.com/ALbaz145/ecg-ai/issues/45) |
+| T11d | Docker: volumen `data/` + `MODEL_PATH` en compose | @devops | Abierta | [#46](https://github.com/ALbaz145/ecg-ai/issues/46) |
+| T11e | Etiquetas AAMI en `frontend/src/utils/labels.js` | @frontend | Abierta (deps: T11b) | [#47](https://github.com/ALbaz145/ecg-ai/issues/47) |
+
+Criterios por subtarea:
+- **T11a**: `get_real_model() -> BaselineModel | None` con caché por proceso y
+  `reset_model_cache()` para tests; ausente/corrupto → `None` + warning,
+  **sin romper el request** (fallback heurístico); pruebas con artefacto
+  mínimo en `tmp_path`.
+- **T11b**: con modelo → `model_version = baseline-sklearn-0.1.0`,
+  `anomalia` ∈ {normal, arritmia_supraventricular, arritmia_ventricular,
+  latido_fusion, clase_desconocida, senal_no_valorable}, zonas por latido
+  no-N **en índices de la señal original**, confianza = media de
+  `max(predict_proba)`; resampleo al fs del modelo (testeado 360/500/90 Hz);
+  sin modelo → rama heurística intacta (244 tests pasan sin cambios).
+- **T11c**: CLI con `--dest/--seed`, imprime métricas (T13), idempotente con
+  dataset cacheado; `data/` y `*.joblib` siguen ignorados; tests con mocks.
+- **T11d**: volumen `./data:/app/data` + `MODEL_PATH` en compose y
+  `.env.example`; `docker compose config` OK; sin artefacto arranca igual.
+- **T11e**: `ANOMALIAS`/`ZONAS_TIPO` ampliados con las claves nuevas;
+  fallback `capitalizar` sigue funcionando; eslint + vitest verdes.
 
 ### Desglose T09 — Pipeline MIT-BIH (padre #12)
 
@@ -128,3 +161,10 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
 - **2026-11-09 (pausa)**: siguiente paso al reanudar → **T11 (#14, @backend)**:
   integrar el modelo real (baseline joblib de T10) en `POST /ecg/analyze` →
   luego T14 (#17, @qa) → T12 (#15, @backend) → cierra Fase 2. Backlog #37.
+- **2026-11-09**: **T11 desglosada** en 5 sub-issues de #14 con decisiones
+  de diseño fijadas: **MODEL_PATH + script `train_model`** (artefacto no
+  commiteado, fallback al heurístico), **etiquetas AAMI en español**
+  (agregado por latido, mapeo S/V/F/Q) y **resampleo al fs del modelo**
+  (360 Hz; zonas en índices de la señal original). Issues: T11a #43,
+  T11b #44, T11c #45 (T11d #46 @devops, T11e #47 @frontend, deps T11b).
+  Orden: T11a → T11b → (T11c ‖ T11d) → T11e → T14 (#17, @qa).
