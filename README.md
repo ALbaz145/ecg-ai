@@ -43,6 +43,34 @@ docker compose logs -f backend    # logs del backend
 curl http://localhost:8000/docs   # API docs (Swagger)
 ```
 
+## Modelo real (entrenar → montar → verificar)
+
+El artefacto del modelo (`data/models/baseline.joblib`) **no se commitea**
+(gitignored): se genera en el host y `docker-compose.yml` monta `./data`
+en `/app/data` para que el contenedor lo lea (solo lectura), con la ruta
+configurable vía `MODEL_PATH` (ver `.env.example`).
+
+```bash
+# 1. Entrenar en el host (CLI de T11c; escribe data/models/baseline.joblib)
+mkdir -p data            # si data/ no existe, créalo antes del compose up
+cd backend && python -m app.train_model
+
+# 2. Levantar (el backend verá el artefacto vía el volumen)
+docker compose up -d --build
+
+# 3. Verificar: la respuesta trae model_version = baseline-sklearn-0.1.0
+curl -s http://localhost:8000/health
+# (esquema abreviado: la señal real necesita ≥100 muestras)
+curl -s -X POST http://localhost:8000/ecg/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"signal": [0.1, 0.2, ...], "sample_rate_hz": 500}'
+```
+
+**Sin artefacto no hay error**: si `data/models/baseline.joblib` no existe
+(o no es legible), el backend arranca igual, avisa en los logs
+(`docker compose logs backend | grep "Modelo real no disponible"`) y
+responde con el modelo heurístico (`model_version = heuristic-mvp-0.1.0`).
+
 ## Apagar
 
 ```bash
@@ -59,6 +87,7 @@ Todas las configuraciones viven en `.env` (creado desde `.env.example`):
 | `POSTGRES_USER`  | `ecg`                  | Usuario de PostgreSQL        |
 | `POSTGRES_PASSWORD` | `cambia_en_env`     | Contraseña de PostgreSQL     |
 | `POSTGRES_DB`    | `ecg`                  | Nombre de la base de datos   |
+| `MODEL_PATH`     | `data/models/baseline.joblib` | Ruta del artefacto del modelo (relativa al WORKDIR; en el contenedor `/app`) |
 | `VITE_API_URL`   | `http://localhost:8000` | URL de la API en el navegador |
 
 `DATABASE_URL` se construye automáticamente en `docker-compose.yml` a partir de
