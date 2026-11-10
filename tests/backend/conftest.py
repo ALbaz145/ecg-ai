@@ -4,6 +4,10 @@
   ``db`` (raíz del repo) desde la raíz del repo.
 - Provee el **doble en memoria** del repositorio (no se
   necesita PostgreSQL) y un cliente de prueba FastAPI.
+- **Aísla la suite de ``MODEL_PATH``** (D-x): salvo inyección
+  explícita de un test, la rama por defecto de cada test es la
+  heurística, venga de donde venga el env var (ver
+  :func:`_aislamiento_model_path`).
 
 Ejecución (desde la raíz del repo):
 
@@ -23,10 +27,12 @@ for _path in (str(REPO_ROOT), str(BACKEND_DIR)):
         sys.path.insert(0, _path)
 
 import uuid  # noqa: E402
+from collections.abc import Iterator  # noqa: E402
 from typing import Any  # noqa: E402
 
 import pytest  # noqa: E402
 from app.main import app  # noqa: E402
+from app.model_loader import MODEL_PATH_ENV, reset_model_cache  # noqa: E402
 from app.repository import (  # noqa: E402
     EcgRepository,
     StoredAnalysis,
@@ -139,3 +145,38 @@ def client(fake_repository: FakeRepository) -> TestClient:
 def repository_type() -> type[EcgRepository]:
     """Tipo del repositorio (para anotaciones de pruebas)."""
     return EcgRepository
+
+
+@pytest.fixture(autouse=True)
+def _aislamiento_model_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[None]:
+    """Aísla cada test de un ``MODEL_PATH`` externo (D-x, T11b/T11c).
+
+    La suite asume la **rama heurística** por defecto: sin aislamiento,
+    un ``MODEL_PATH`` apuntando a un artefacto válido —p. ej. el que
+    genera el CLI de T11c o el entorno del shell— cambia las etiquetas
+    de ``POST /ecg/analyze`` a AAMI y deja la suite en rojos
+    (``assert 'arritmia_supraventricular' == 'normal'``). Antes de cada
+    test se fija ``MODEL_PATH`` a una ruta **inexistente** dentro de
+    ``tmp_path`` (cubre tanto el env var externo como un artefacto en
+    la ruta por defecto ``data/models/baseline.joblib``) y se vacía la
+    caché del loader, para que el siguiente ``get_real_model()`` lea el
+    estado aislado; tras el test se vacía de nuevo para que ninguna
+    caché se filtre al siguiente.
+
+    **Orden de fixtures**: los ``autouse`` de mayor scope primero y,
+    dentro del mismo scope, los ``autouse`` antes que el resto; aquí
+    comparten la misma instancia *function-scoped* de ``monkeypatch``
+    que los tests. Así esta fixture se ejecuta **antes** de los
+    ``monkeypatch.setenv("MODEL_PATH", ...)`` de los tests que inyectan
+    el modelo explícitamente (p. ej. ``client_con_modelo`` de
+    ``test_inference.py`` o los de ``test_model_loader.py``): el
+    ``setenv`` del test llega después y **gana**, sin tocar sus
+    aserciones. Los tests del cuerpo también se ejecutan después, así
+    que su ``setenv`` posterior igualmente prevalece.
+    """
+    reset_model_cache()
+    monkeypatch.setenv(MODEL_PATH_ENV, str(tmp_path / "sin-modelo.joblib"))
+    yield
+    reset_model_cache()
