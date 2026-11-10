@@ -119,6 +119,18 @@ def _fraccion(value: str) -> float:
     return ratio
 
 
+def _ruta(value: str) -> Path:
+    """``--dest``/``--data-dir`` como ``Path`` con ``~`` expandido (D-2).
+
+    Sin expandir, argparse dejaría el ``~`` literal: ``--dest
+    '~/modelo.joblib'`` crearía un directorio ``./~/`` en el *cwd* en
+    vez de escribir en el home. El default de ``--dest`` (``None`` →
+    ``resolve_model_path()``) ya expandía ``~``; aquí se aplica la
+    misma semántica a lo que llega por línea de comandos.
+    """
+    return Path(value).expanduser()
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Parser del CLI (cada argumento documentado en su ``help``).
 
@@ -145,13 +157,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--dest",
-        type=Path,
+        type=_ruta,
         default=None,
         help=(
             "Ruta del artefacto .joblib a escribir (se crean los directorios "
-            "padre y se sobrescribe si ya existe). Por defecto: $MODEL_PATH o "
-            "data/models/baseline.joblib, vía model_loader.resolve_model_path "
-            "(la misma resolución que usa la API en runtime)."
+            "padre y se sobrescribe si ya existe; ~ se expande al home). "
+            "Por defecto: $MODEL_PATH o data/models/baseline.joblib, vía "
+            "model_loader.resolve_model_path (la misma resolución que usa "
+            "la API en runtime)."
         ),
     )
     parser.add_argument(
@@ -186,12 +199,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--data-dir",
-        type=Path,
+        type=_ruta,
         default=DEFAULT_DEST,
         help=(
             "Directorio con la caché del dataset MIT-BIH (.hea/.dat/.atr); "
-            f"por defecto {DEFAULT_DEST} (gitignored). Si falta un registro "
-            "se descarga aquí; si ya está cacheado no hay red."
+            f"por defecto {DEFAULT_DEST} (gitignored; ~ se expande al home). "
+            "Si falta un registro se descarga aquí; si ya está cacheado no "
+            "hay red."
         ),
     )
     parser.add_argument(
