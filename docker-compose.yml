@@ -44,6 +44,27 @@ services:
       # URL de conexión construida a partir de las variables de PostgreSQL.
       # Si se usa una DB externa, definir DATABASE_URL en .env y eliminar esta línea.
       DATABASE_URL: postgresql://${POSTGRES_USER:-ecg}:${POSTGRES_PASSWORD:-cambia_en_env}@postgres:5432/${POSTGRES_DB:-ecg}
+      # Ruta del artefacto del modelo real (T11d, issue #46). Relativa al
+      # WORKDIR /app: con el volumen de abajo resuelve a
+      # /app/data/models/baseline.joblib (== ./data/models/baseline.joblib
+      # en el host, donde lo escribe el CLI `python -m app.train_model`
+      # de T11c). El artefacto no se commitea (gitignored); si falta, el
+      # backend arranca igual con el heurístico (fallback con warning,
+      # T11a). Se puede sobreescribir desde .env (MODEL_PATH=...).
+      MODEL_PATH: ${MODEL_PATH:-data/models/baseline.joblib}
+    volumes:
+      # Artefacto del modelo (T11d): el backend solo LEE
+      # data/models/baseline.joblib en runtime —el entrenamiento se hace
+      # en el host con el CLI de T11c—, por eso montaje en solo lectura.
+      # Si en algún momento hay que escribir en data/ desde dentro del
+      # contenedor (p. ej. entrenar ahí), quita `:ro`.
+      # Permisos: el contenedor corre como `appuser` (uid 1000, el mismo
+      # que el usuario habitual del host); si un fichero no resultara
+      # legible para él, model_loader emite warning y usa el heurístico
+      # (no rompe el arranque ni el request).
+      # Nota: si ./data no existe al hacer `up`, Docker lo crea como
+      # root — crea el directorio en el host antes (mkdir -p data).
+      - ./data:/app/data:ro
     ports:
       - "8000:8000"
     depends_on:
