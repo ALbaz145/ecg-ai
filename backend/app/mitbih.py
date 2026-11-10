@@ -45,9 +45,11 @@ from pathlib import Path
 #: Registros canónicos de la MIT-BIH Arrhythmia Database (**48**),
 #: tomados del archivo canónico ``RECORDS`` que wfdb usa internamente:
 #: https://physionet.org/files/mitdb/1.0.0/RECORDS (verificado
-#: 2026-11-05). No existen el 110, 120, 125, 126, 204, 211, 216, 218;
-#: sí existen 122 y 222. Ojo: una enumeración "100-108, 109, 111-119,
-#: 120, 121, 123-126, ..." daría 49 IDs e incluiría inexistentes.
+#: 2026-11-05). No existen el 110, 120, 125, 126 (huecos en el
+#: bloque 100-126) ni, dentro de 200-234, el 204, 206, 211, 216, 218,
+#: 224, 225, 226, 227 y 229; sí existen 122 y 222. Ojo: una
+#: enumeración "100-108, 109, 111-119, 120, 121, 123-126, ..."
+#: daría 49 IDs e incluiría inexistentes.
 RECORDS: list[str] = [
     "100", "101", "102", "103", "104", "105", "106", "107", "108", "109",
     "111", "112", "113", "114", "115", "116", "117", "118", "119",

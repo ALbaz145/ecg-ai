@@ -75,7 +75,7 @@ detectar picos y ventanas sobre la señal resampleada.
 | --- | --- | --- |
 | Frecuencia cardíaca (lpm) | `60 / mediana(RR)`, RR = intervalos entre picos R | FC media de la anotación de referencia |
 | CV de RR | `std(RR) / mean(RR)` | Regularidad del ritmo (arritmia) |
-| Amplitud R (mV) | Mediana de `max(|x|)` en ±60 ms del R | Criterios de voltaje del QRS |
+| Amplitud R (mV) | Mediana de `max\|x\|` en ±60 ms del R | Criterios de voltaje del QRS |
 | Ratio de ruido | Energía > 40 Hz / energía total | Calidad de la señal |
 
 ## 4. Reglas de clasificación (`backend/app/model.py`)
@@ -203,16 +203,23 @@ API agrega esas predicciones a una etiqueta por señal (§12).
   Dataset **público** (Open Data Commons Attribution License 1.0).
 - **Registros**: los **48 registros canónicos** de `RECORDS`
   (constante `RECORDS` en `mitbih.py`, verificada contra
-  PhysioNet 2026-11-05): `100`–`109`, `111`–`119`, `121`–`124`,
-  `200`–`234` con huecos (no existen 110, 120, 125, 126, 204,
-  211, 216, 218). Cada registro aporta `.hea` + `.dat` + `.atr`.
-- **Caché**: `data/mit-bih/` (y todo `*.dat`/`*.hea`/`*.atr`/
-  `*.joblib`/`*.npz`) está en `.gitignore`: **el dataset y el
-  artefacto nunca se commitean**. La caché es por registro
-  (los 3 sufijos deben existir para darlo por cacheado).
+  PhysioNet 2026-11-05): `100`–`109`, `111`–`119` y `121`–`124`
+  sin huecos internos (no existen `110`, `120`, `125`, `126`),
+  más `200`–`234` con 10 huecos (no existen `204`, `206`,
+  `211`, `216`, `218`, `224`, `225`, `226`, `227`, `229`):
+  10 + 9 + 4 + 25 = **48 registros**. Cada registro aporta
+  `.hea` + `.dat` + `.atr`.
+- **Caché**: `data/mit-bih/` está dentro de `data/`, que está
+  entero en `.gitignore` (los `*.npz` solo se ignoran ahí,
+  dentro de `data/`; no hay patrón global `*.npz`: los
+  patrones globales son `*.dat`/`*.hea`/`*.atr`/`*.joblib`):
+  **el dataset y el artefacto nunca se commitean**. La caché
+  es por registro (los 3 sufijos deben existir para darlo por
+  cacheado).
 - **Señal**: **un solo canal por registro** — índice
-  `lead=0` (el canal MLII en `mitdb`; PhysioNet advierte que
-  la configuración de leads varía entre registros) — con
+  `lead=0` (el canal **MLII en la mayoría de registros**;
+  102, 104 y 114 tienen V5 en el canal 0, y PhysioNet advierte
+  que la configuración de leads varía entre registros) — con
   `fs=360 Hz`, resolución 11 bits sobre 10 mV (grabación
   analógica original).
 - **Contenido histórico** (PhysioNet): 48 extractos de ~30 min
@@ -472,7 +479,8 @@ en verde.
    auricular real, etc. Las clases son anotaciones AAMI de
    latidos, no diagnósticos clínicos.
 2. **Un solo lead.** Tanto el entrenamiento como la
-   inferencia usan un canal (`lead=0`, MLII en mitdb); los
+   inferencia usan un canal (`lead=0`, MLII en la mayoría de
+   registros de mitdb); los
    criterios clínicos de voltaje y la mayoría de modelos
    usan 12 leads.
 3. **Clases desbalanceadas.** N es el **80,5 %** del dataset
