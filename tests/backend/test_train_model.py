@@ -15,7 +15,8 @@ Cobertura frente a los criterios de aceptación de #45:
 - métricas por stdout (``Metrics.to_dict``: accuracy,
   sensibilidad/especificidad macro, matriz de confusión) + ruta escrita;
 - ``--dest`` por defecto = ``resolve_model_path()`` (``MODEL_PATH`` y
-  default relativo bajo el cwd);
+  default relativo bajo el cwd) y ``--dest``/``--data-dir`` con ``~``
+  expandido al home, nunca como ruta literal (D-2);
 - idempotente: re-ejecutar sobrescribe el artefacto y con la caché local
   completa no hay re-descarga (el seam ``_load_wfdb`` estalla si wfdb se
   llegara a importar);
@@ -329,6 +330,53 @@ def test_dest_explicito_tiene_prioridad_sobre_model_path(
     assert codigo == 0
     assert destino.is_file()
     assert not (tmp_path / "por-env.joblib").exists()
+
+
+# ---------------------------------------------------------------------------
+# --dest / --data-dir expanden ~ (D-2)
+# ---------------------------------------------------------------------------
+
+
+def test_dest_y_data_dir_expanden_ilde(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D-2: el ``~`` de la CLI se expande al home, no se toma literal."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    args = train_model.build_parser().parse_args(
+        ["--dest", "~/modelos/baseline.joblib", "--data-dir", "~/mit-bih"]
+    )
+
+    assert args.dest == tmp_path / "modelos" / "baseline.joblib"
+    assert args.data_dir == tmp_path / "mit-bih"
+    assert "~" not in str(args.dest)
+    assert "~" not in str(args.data_dir)
+
+
+def test_dest_con_ilde_escribe_en_el_home_sin_dir_literal(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    cli_sin_red: tuple[list[dict[str, object]], list[dict[str, object]]],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D-2 (e2e): ``--dest ~/modelo.joblib`` escribe en ``$HOME``.
+
+    Antes del fix el ``~`` quedaba literal y se creaba un directorio
+    ``./~/`` en el *cwd* en vez del archivo en el home (el default sí
+    expandía, porque pasa por ``resolve_model_path()``).
+    """
+    descargas, _construcciones = cli_sin_red
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    codigo = train_model.main(
+        ["--dest", "~/modelo.joblib", "--data-dir", "~/mit-bih"]
+    )
+
+    assert codigo == 0
+    assert (tmp_path / "modelo.joblib").is_file()  # expandido al home
+    assert not (Path.cwd() / "~").exists()  # nunca un dir literal ~
+    assert descargas[0]["dest"] == tmp_path / "mit-bih"  # --data-dir expandido
+    assert str(tmp_path / "modelo.joblib") in capsys.readouterr().out
 
 
 # ---------------------------------------------------------------------------
