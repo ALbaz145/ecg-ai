@@ -51,7 +51,7 @@ fs del modelo** (360 Hz MIT-BIH) antes de inferir.
 
 | ID   | Subtarea | Responsable | Estado  | Issue |
 | ---- | -------- | ----------- | ------- | ----- |
-| T11a | Loader del artefacto (`MODEL_PATH`, caché, fallback al heurístico) | @backend | Abierta | [#43](https://github.com/ALbaz145/ecg-ai/issues/43) |
+| T11a | Loader del artefacto (`MODEL_PATH`, caché, fallback al heurístico) | @backend | Hecha ✅ (QA: APROBADO + D-1 cerrado, 270 tests, PR #49) | [#43](https://github.com/ALbaz145/ecg-ai/issues/43) |
 | T11b | Inferencia real en `pipeline.run_analysis` (resample, AAMI, agregado) | @backend | Abierta | [#44](https://github.com/ALbaz145/ecg-ai/issues/44) |
 | T11c | CLI `python -m app.train_model` (genera el artefacto, sin commitear) | @backend | Abierta | [#45](https://github.com/ALbaz145/ecg-ai/issues/45) |
 | T11d | Docker: volumen `data/` + `MODEL_PATH` en compose | @devops | Abierta | [#46](https://github.com/ALbaz145/ecg-ai/issues/46) |
@@ -168,3 +168,8 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   (360 Hz; zonas en índices de la señal original). Issues: T11a #43,
   T11b #44, T11c #45 (T11d #46 @devops, T11e #47 @frontend, deps T11b).
   Orden: T11a → T11b → (T11c ‖ T11d) → T11e → T14 (#17, @qa).
+- **2026-11-09**: **T11a cerrada** — loader del artefacto (#43, PR #49,
+  @qa APROBADO con D-1 menor corregido y re-verificado): `get_real_model()`
+  con caché thread-safe, `reset_model_cache()`, `None` + warning ante
+  artefacto ausente/corrupto/ruta inválida (nunca excepción al request),
+  270 tests. Nota: el baseline real era 255 tests (PLAN decía 244).
