@@ -621,23 +621,69 @@ def test_umbral_de_agregado_con_modelo_controlado(client, monkeypatch) -> None:
     assert body["model_version"] == ARTIFACT_VERSION
 
 
+def test_version_de_la_respuesta_sale_de_los_metadatos_del_artefacto(
+    client, monkeypatch
+) -> None:
+    """``model_version`` = la de los **metadatos** del artefacto (AC #17.1).
+
+    Además de ``== baseline-sklearn-0.1.0`` con artefactos reales, este
+    test prueba que la versión **no está hardcodeada** en el pipeline:
+    con un artefacto cuyos metadatos declaran otra versión, la
+    respuesta refleja exactamente ``model.meta["model_version"]``. Si
+    el pipeline dejara de usar el modelo real (o escribiera una
+    constante en vez de leer los metadatos), fallaría aquí.
+    """
+    version_metadata = "baseline-sklearn-0.2.0"
+    _modelo_controlado(
+        monkeypatch,
+        patron=["N"],
+        probas=[[0.9, 0.1]],
+        meta_extra={"model_version": version_metadata},
+    )
+    response = _post(client, _senal_tiled("N"), sample_rate_hz=360)
+    assert response.status_code == 200
+    assert response.json()["model_version"] == version_metadata
+
+
 # ---------------------------------------------------------------------------
 # Fallback: sin artefacto (o inferencia imposible) → heurístico intacto
 # ---------------------------------------------------------------------------
 
 
 def test_sin_artefacto_rama_heuristica_intacta(
-    client, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    client,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """``MODEL_PATH`` inexistente → etiquetas y versión heurísticas."""
-    monkeypatch.setenv(MODEL_PATH_ENV, str(tmp_path / "no-existe.joblib"))
+    """``MODEL_PATH`` inexistente → **200 heurístico + warning** (AC #17.3).
+
+    El diseño acordado es *fallback, no error*: el artefacto ausente no
+    rompe el request. Aquí se cubren los dos aspectos del AC en la
+    llamada de **la API** (no solo del loader): (1) ``POST
+    /ecg/analyze`` responde ``200`` con la etiqueta y la versión
+    heurísticas; (2) el loader emite su ``logger.warning`` con la ruta
+    intentada durante el request (caplog), haciendo visible el fallback.
+    """
+    ausente = tmp_path / "no-existe.joblib"
+    monkeypatch.setenv(MODEL_PATH_ENV, str(ausente))
     reset_model_cache()
     signal = synthetic_ecg(bpm=120)
-    response = _post(client, signal)
+    with caplog.at_level(logging.WARNING, logger="ecg_ai.backend"):
+        response = _post(client, signal)
     assert response.status_code == 200
     body = response.json()
     assert body["anomalia"] == "taquicardia"
     assert body["model_version"] == HEURISTIC_VERSION == "heuristic-mvp-0.1.0"
+    avisos = [
+        r.getMessage()
+        for r in caplog.records
+        if r.name == "ecg_ai.backend" and r.levelno == logging.WARNING
+    ]
+    assert any(
+        "Modelo real no disponible" in mensaje and str(ausente) in mensaje
+        for mensaje in avisos
+    ), avisos
 
 
 def test_inferencia_imposible_cae_al_heuristico(
