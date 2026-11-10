@@ -1,7 +1,9 @@
 /**
- * Etiquetas legibles para las claves del modelo (backend/app/model.py).
+ * Etiquetas legibles para las claves del modelo (backend/app/model.py
+ * y las claves AAMI del agregado en backend/app/inference.py).
  * El modelo devuelve claves en snake_case en español; aquí las hacemos
  * presentables para el personal médico.
+ * Las claves desconocidas caen en el fallback `capitalizar`.
  */
 
 export const ANOMALIAS = {
@@ -12,6 +14,11 @@ export const ANOMALIAS = {
   amplitud_anomala: 'Amplitud anómala del complejo QRS',
   ruido_excesivo: 'Ruido excesivo',
   senal_no_valorable: 'Señal no valorable',
+  // Agregado AAMI con modelo real (backend/app/inference.py: CLASE_AAMI → anomalia)
+  arritmia_supraventricular: 'Arritmia supraventricular',
+  arritmia_ventricular: 'Arritmia ventricular',
+  latido_fusion: 'Latido de fusión',
+  clase_desconocida: 'Latido de clase desconocida (clase Q, sin clasificar)',
 };
 
 export const ZONAS_TIPO = {
@@ -21,6 +28,11 @@ export const ZONAS_TIPO = {
   taquicardia: 'Taquicardia',
   bradicardia: 'Bradicardia',
   ruido_excesivo: 'Ruido excesivo',
+  // Una zona por latido no-N (backend/app/inference.py: CLASE_AAMI → tipo)
+  latido_supraventricular: 'Latido supraventricular',
+  latido_ventricular: 'Latido ventricular',
+  latido_fusion: 'Latido de fusión',
+  latido_desconocido: 'Latido desconocido',
 };
 
 function capitalizar(texto) {
