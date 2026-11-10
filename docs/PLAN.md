@@ -40,7 +40,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Cerrada ✅ (T11a-e + fixes + T14; #14 cerrado 2026-11-10) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Hecha ✅ (QA APROBADO, PR #58, 339 backend + 73 frontend) | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
-| T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
+| T12 | Documentar modelo en docs/MODEL.md             | @backend    | Hecha ✅ (QA: APROBADO 5/5 AC, PR #60 + fixes PR #62) | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
 
 ### Desglose T11 — Integrar modelo real en POST /ecg/analyze (padre #14)
 
@@ -194,3 +194,13 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   339 tests backend + 73 frontend. **Issues #17 y #14 cerrados**: la API
   usa el modelo real (`baseline-sklearn-0.1.0`) con fallback heurístico
   intacto. Siguiente: **T12 (#15, @backend)** → Fase 2 completa.
+- **2026-11-10**: **T12 cerrada → FASE 2 COMPLETA** — `docs/MODEL.md`
+  reestructurado (Parte I heurístico histórico / Parte II modelo real con
+  dataset, split, features, métricas T13 con CM 5×5 y tabla por clase
+  archivadas en #16, uso en la API, 11 limitaciones / Parte III hoja de
+  ruta). @qa APROBADO (5/5 AC, cifras verificadas sin inventar); fixes
+  D1-D4 en PR #62 (incl. corrección de la atribución de canales MLII/V5:
+  solo 102/104/114 tienen V5 en canal 0). **Issues #15 cerrado.**
+  Hallazgo nuevo → issue **#61**: fuga residual 201/202 (mismo sujeto
+  partido por el split por registro; prioridad baja-media, retrain +
+  re-validación QA). Tests: 339 backend + 73 frontend. Backlog #37.
