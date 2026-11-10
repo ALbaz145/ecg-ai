@@ -38,8 +38,8 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Hecha ✅ (QA: 5/5 sin defectos, 197bbaf, 255 passed) | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
 | T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
-| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Hecha ✅ (T11a-e cerradas; falta QA final T14) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
-| T14 | Pruebas: la API usa el modelo real             | @qa         | Abierta | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
+| T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Cerrada ✅ (T11a-e + fixes + T14; #14 cerrado 2026-11-10) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
+| T14 | Pruebas: la API usa el modelo real             | @qa         | Hecha ✅ (QA APROBADO, PR #58, 339 backend + 73 frontend) | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Abierta | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
 
 ### Desglose T11 — Integrar modelo real en POST /ecg/analyze (padre #14)
@@ -188,3 +188,9 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
 - **2026-11-10 (pausa)**: siguiente paso al reanudar → **T14 (#17, @qa)**:
   validación final de T11 (API con modelo real) → cierra #14 → T12 (#15,
   @backend, docs/MODEL.md) → Fase 2 completa. Backlog #37.
+- **2026-11-10**: **T14 cerrada y T11 completa** — PR #58 (QA APROBADO):
+  matriz AC #17 cubierta (versión real desde metadatos, E2E dataset→respuesta
+  con etiqueta conocida a 360 y 500 Hz, fallback con warning en caplog),
+  339 tests backend + 73 frontend. **Issues #17 y #14 cerrados**: la API
+  usa el modelo real (`baseline-sklearn-0.1.0`) con fallback heurístico
+  intacto. Siguiente: **T12 (#15, @backend)** → Fase 2 completa.
