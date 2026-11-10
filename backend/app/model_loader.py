@@ -3,9 +3,11 @@
 Resuelve la env var ``MODEL_PATH`` (por defecto
 ``data/models/baseline.joblib``), carga el bundle **una sola vez por
 proceso** con :func:`app.baseline.load_model` y lo expone de forma
-segura: si el archivo falta, no es legible o sus metadatos no
-validan, la función devuelve ``None`` y emite ``logger.warning`` con
-la **ruta intentada** y el **motivo**. **Nunca lanza excepción** al
+segura: si la ruta no puede resolverse, el archivo falta, no es
+legible o sus metadatos no validan, la función devuelve ``None`` y
+emite ``logger.warning`` con la **ruta intentada** (o el valor crudo
+de ``MODEL_PATH`` si falló la resolución) y el **motivo**.
+**Nunca lanza excepción** al
 caller, de modo que el pipeline (T11b) pueda caer al heurístico de
 ``app.model`` sin romper el request. Las pruebas viven en
 ``tests/backend/test_model_loader.py``.
@@ -109,11 +111,14 @@ def get_real_model() -> BaselineModel | None:
     Returns
     -------
     BaselineModel | None
-        El modelo cargado, o ``None`` si el artefacto **no existe**,
-        **no es un archivo regular** o **no es cargable** (contenido
-        corrupto, metadatos inválidos, permisos…). En el caso
-        ``None`` se emite un ``logger.warning`` (logger
-        ``ecg_ai.backend``) con la ruta intentada y el motivo.
+        El modelo cargado, o ``None`` si no puede **resolverse** la
+        ruta (``expanduser`` falla, p. ej. ``~usuario`` sin ``HOME``),
+        el artefacto **no existe**, **no es un archivo regular** o
+        **no es cargable** (contenido corrupto, metadatos inválidos,
+        permisos…). En el caso ``None`` se emite un
+        ``logger.warning`` (logger ``ecg_ai.backend``) con la ruta
+        intentada —o el valor **crudo** de ``MODEL_PATH`` si falló la
+        resolución— y el motivo.
 
     Notes
     -----
@@ -123,7 +128,26 @@ def get_real_model() -> BaselineModel | None:
     módulo); para vaciar la caché de un modelo ya cargado está
     :func:`reset_model_cache`.
     """
-    path = resolve_model_path()
+    try:
+        path = resolve_model_path()
+    except Exception as resolucion_exc:  # p. ej. expanduser sin HOME
+        # La resolución también es "problema de configuración del
+        # artefacto": el contrato es nunca propagar, así que va el
+        # valor **crudo** de MODEL_PATH (sin expandir) y el motivo.
+        detalle = str(resolucion_exc).strip()
+        motivo_resolucion = (
+            f"{type(resolucion_exc).__name__}: {detalle}"
+            if detalle
+            else type(resolucion_exc).__name__
+        )
+        logger.warning(
+            "Modelo real no disponible en %s (%s); el pipeline seguirá "
+            "con el heurístico.",
+            os.getenv(MODEL_PATH_ENV, ""),
+            motivo_resolucion,
+        )
+        return None
+
     global _cached_path, _cached_model
     with _LOCK:
         if _cached_model is not None and _cached_path == path:

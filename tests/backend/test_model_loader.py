@@ -219,6 +219,35 @@ def test_directorio_como_model_path_devuelve_none_y_warning(
     assert "archivo regular" in avisos[0]
 
 
+def test_model_path_no_expandible_devuelve_none_y_warning(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """D-1 (T11a): fallo al resolver la ruta no escapa al caller.
+
+    ``Path.expanduser()`` puede lanzar (p. ej. ``RuntimeError:
+    Could not determine home directory`` con un ``~usuario`` inválido
+    cuando no hay HOME). El contrato del módulo es **nunca lanzar**:
+    tiene que devolver ``None`` + warning con el valor **crudo** de
+    ``MODEL_PATH`` y el motivo.
+    """
+    crudo = "~usuario_inexistente_xyz/m.joblib"
+    monkeypatch.setenv(MODEL_PATH_ENV, crudo)
+
+    def _expanduser_fallido(self: Path) -> Path:
+        raise RuntimeError("Could not determine home directory.")
+
+    monkeypatch.setattr(Path, "expanduser", _expanduser_fallido)
+    caplog.set_level(logging.WARNING, logger="ecg_ai.backend")
+
+    model = get_real_model()  # antes del fix: RuntimeError
+
+    assert model is None
+    avisos = _warnings(caplog)
+    assert len(avisos) == 1
+    assert crudo in avisos[0]  # valor crudo de MODEL_PATH, sin expandir
+    assert "RuntimeError" in avisos[0]  # motivo (clase y mensaje)
+
+
 def test_falla_no_se_cachea_reintenta_en_siguiente_llamada(
     modelo_entrenado: BaselineModel, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
