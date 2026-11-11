@@ -380,12 +380,16 @@ juntos a train** — §9):
 | Especificidad macro | **0,8992** | 0,8823 |
 
 > Al corregir el split, la **partición de test cambió**
-> (47 sujetos en vez de 48 registros → otros 10 sujetos:
-> `105, 119, 200, 203, 207, 212, 213, 231, 232, 234`), así
-> que la comparación refleja el **reparto completo nuevo**,
-> no solo la fuga corregida. El control con fuga completa de
-> §9 (+16 pts) sigue siendo la referencia del efecto de una
-> fuga sobre este dataset.
+> (47 sujetos en vez de 48 registros → un test donde
+> **5 de los 10 sujetos cambiaron** respecto al histórico
+> T13: coinciden `105, 207, 231, 232, 234`; entran
+> `119, 200, 203, 212, 213` y salen `122, 201, 209, 214,
+> 219`; test actual `105, 119, 200, 203, 207, 212, 213,
+> 231, 232, 234`), así que la comparación refleja el
+> **reparto completo nuevo**, no solo la fuga corregida.
+> El control con fuga completa de §9 (+16 pts) sigue
+> siendo la referencia del efecto de una fuga sobre este
+> dataset.
 
 **Por clase** (`zero_division=0`; orden AAMI; test
 2026-11-11, 25.699 latidos):
@@ -595,8 +599,9 @@ en verde.
 
 1. ✅ Descarga/lectura/etiquetado de **MIT-BIH** con `wfdb`
    y dataset AAMI serializable (T09).
-2. ✅ **Baseline sklearn** con split por paciente sin fuga
-   (T10, #13).
+2. ✅ **Baseline sklearn** con split por paciente **sin fuga
+   por registro** (la fuga residual 201/202 se corrigió en
+   #61, ver §13.8) (T10, #13).
 3. ✅ **Métricas reales** (sensibilidad, especificidad y
    matriz de confusión por clase) en un split de test
    separado, validadas por @qa (T13, #16) — §11.
