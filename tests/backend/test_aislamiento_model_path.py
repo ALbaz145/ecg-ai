@@ -180,7 +180,7 @@ def test_inyeccion_explicita_del_modelo_sigue_ganando(
 
     body = _post(client, synthetic_ecg(bpm=120))
 
-    assert body["model_version"] == MODEL_VERSION == "baseline-sklearn-0.1.0"
+    assert body["model_version"] == MODEL_VERSION == "baseline-sklearn-0.2.0"
 
 
 def test_repro_de_qa_con_model_path_externo_pasa_en_subproceso(

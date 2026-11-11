@@ -100,7 +100,7 @@ def test_e2e_dataset_a_respuesta_version_y_etiqueta_reales(client_e2e) -> None:
     body = response.json()
     _assert_contrato(body, len(signal))
     # Versión real del artefacto (metadatos), nunca la heurística.
-    assert body["model_version"] == MODEL_VERSION == "baseline-sklearn-0.1.0"
+    assert body["model_version"] == MODEL_VERSION == "baseline-sklearn-0.2.0"
     # Etiqueta coherente con la señal: anómala → con zonas.
     assert body["anomalia"] == "arritmia_ventricular"
     assert len(body["zonas_anomalas"]) == N_LATIDOS_V
@@ -120,7 +120,7 @@ def test_e2e_con_resample_500hz_etiqueta_coherente(client_e2e) -> None:
     assert response.status_code == 200
     body = response.json()
     _assert_contrato(body, len(senal_500))
-    assert body["model_version"] == MODEL_VERSION == "baseline-sklearn-0.1.0"
+    assert body["model_version"] == MODEL_VERSION == "baseline-sklearn-0.2.0"
     assert body["anomalia"] == "arritmia_ventricular"
     # Zonas válidas en índices de la señal ORIGINAL de 500 Hz (ya
     # chequeados por _assert_contrato) y de tipo ventricular.

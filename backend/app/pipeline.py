@@ -90,7 +90,7 @@ def run_analysis(
     clasificación se hace con ``app.inference`` —resampleo al ``fs``
     del modelo, predicción por latido, agregado AAMI en español y
     zonas en índices de la señal original— y el ``model_version`` es
-    el de los metadatos (p. ej. ``baseline-sklearn-0.1.0``). Si no hay
+    el de los metadatos (p. ej. ``baseline-sklearn-0.2.0``). Si no hay
     artefacto (o la inferencia lanza), se ejecuta **exactamente** la
     rama heurística de siempre (``app.model.classify``), con sus
     etiquetas y ``heuristic-mvp-0.1.0``. El esquema de la respuesta
