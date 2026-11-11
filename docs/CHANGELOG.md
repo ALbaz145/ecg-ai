@@ -2,6 +2,11 @@
 
 Registro de cambios relevantes de la aplicación. Formato: `AAAA-MM-DD` · categoría · descripción.
 
+## 2026-11-11
+
+- **fix(split)**: Split por **sujeto real** en `baseline.split_por_paciente` (#61): constante única `MULTI_RECORD_SUBJECTS = {"202": "201"}` (PhysioNet Usage Notes: los registros 201/202 son del mismo sujeto; 48 registros / 47 sujetos ⇒ único par multi-sujeto) aplicada por `_agrupar_sujetos` dentro del propio split — identidad con IDs sin agrupar (tests de `split_por_paciente` intactos), determinismo conservado y assert anti-fuga ahora a nivel de registro **y** de sujeto. Contrato de `EcgDataset.paciente_id` sin cambios (sigue siendo ID de registro). `MODEL_VERSION` 0.1.0 → **0.2.0** (cambio de entrenamiento: los artefactos antiguos ya no cargan; regenerar con `python -m app.train_model`). Suite backend 339 → **350 tests** (201/202 nunca en train+test con 6 semillas, split interno de `train_baseline` agrupado, solo 201+202 ⇒ 1 sujeto ⇒ error).
+- **test**: Re-entrenamiento real con el split nuevo (#61, 2026-11-11): 48 registros, `dataset_id = 818a3a4ad239bf44`, train 37 sujetos/86.853 latidos · test 10 sujetos/25.699 latidos (`105, 119, 200, 203, 207, 212, 213, 231, 232, 234`; **201 y 202 juntos en train**) → accuracy **0,5582** · sens_macro **0,5884** · spec_macro **0,8992** (T13 "sin fuga por registro", antes de #61: 0,5158 / 0,3584 / 0,8823 con test distinto; el control con fuga completa de +16 pts sigue en `MODEL.md` §9). Matriz 5×5 y tabla por clase en `docs/MODEL.md` §11; "sin fuga" matizado a **"sin fuga por sujeto"** en §9/§13.8/§14.2 y en el issue #16.
+
 ## 2026-11-09
 
 - **test**: T09 (pipeline MIT-BIH) cerrada — validación final de @qa 5/5 sin defectos (#26, #12): E2E mockeado download→load→build→save→load coherente entre módulos, cobertura 96%, flujo MVP sin cambios. Issues #23-#26 cerrados.

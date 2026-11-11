@@ -12,7 +12,7 @@ que indica cuál de los dos se usó en cada análisis):
 | | Parte I (§1–§6) | Parte II (§7–§13) |
 | --- | --- | --- |
 | Modelo | Heurístico MVP (reglas a mano) | Baseline scikit-learn **entrenado** |
-| Versión | `heuristic-mvp-0.1.0` | `baseline-sklearn-0.1.0` |
+| Versión | `heuristic-mvp-0.1.0` | `baseline-sklearn-0.2.0` |
 | Entrenamiento | **Ninguno** (placeholder didáctico) | MIT-BIH, 112.552 latidos, 48 registros |
 | Estado | Histórico; hoy, **fallback** de la API | Activo cuando existe el artefacto (Fase 2: T09–T14) |
 
@@ -20,8 +20,8 @@ que indica cuál de los dos se usó en cada análisis):
   un placeholder didáctico escrito a mano, que sigue intacto y se usa
   como respaldo cuando no hay artefacto entrenado (§12).
 - **Parte II** documenta el **modelo real** de la Fase 2: dataset
-  MIT-BIH, split por paciente, features, métricas reales, integración
-  en la API y limitaciones (issues #12–#17).
+  MIT-BIH, split por sujeto real, features, métricas reales,
+  integración en la API y limitaciones (issues #12–#17 y #61).
 - **Parte III (§14)** es la hoja de ruta actualizada (antes §7).
 
 ---
@@ -189,9 +189,9 @@ API agrega esas predicciones a una etiqueta por señal (§12).
 | --- | --- |
 | Tipo | `Pipeline` scikit-learn: `SimpleImputer(median)` → `StandardScaler` → `LogisticRegression(class_weight="balanced")` |
 | Entrada del clasificador | Ventana **cruda** de ±0.4 s centrada en el pico R (288 muestras @360 Hz) → 14 features |
-| Versión | `baseline-sklearn-0.1.0` (constante `MODEL_VERSION` en `backend/app/baseline.py`) |
-| Entrenamiento | MIT-BIH `mitdb` (48 registros), 112.552 latidos, split **por paciente** 38/10 |
-| Métricas de test | accuracy 0,5158 · sensibilidad macro 0,3584 · especificidad macro 0,8823 (§11) |
+| Versión | `baseline-sklearn-0.2.0` (constante `MODEL_VERSION` en `backend/app/baseline.py`) |
+| Entrenamiento | MIT-BIH `mitdb` (48 registros → 47 sujetos), 112.552 latidos, split **por sujeto real** 37/10 (§9) |
+| Métricas de test | accuracy 0,5582 · sensibilidad macro 0,5884 · especificidad macro 0,8992 (§11, desde #61) |
 | Artefacto | `*.joblib` con metadatos validados; **nunca commiteado** (gitignored) |
 | Código | `mitbih.py`/`mitbih_load.py`/`mitbih_dataset.py` (T09) · `baseline.py` (T10) · `model_loader.py`/`inference.py`/`train_model.py` (T11) |
 
@@ -246,24 +246,47 @@ API agrega esas predicciones a una etiqueta por señal (§12).
   **N 90.588 (80,5 %)**, S 2.781 (2,5 %), V 7.235 (6,4 %),
   F 802 (0,7 %), Q 11.146 (9,9 %).
 
-## 9. Split por paciente y anti-fuga (T10/T13, issues #13 y #16)
+## 9. Split por sujeto real y anti-fuga (T10/T13, issues #13, #16 y #61)
 
-**`baseline.split_por_paciente`** particiona los **IDs de
-paciente** (no los latidos): todos los latidos de un registro
-van juntos a train o a test.
+**`baseline.split_por_paciente`** particiona por **sujeto
+real**: agrupa los IDs de paciente con `_agrupar_sujetos`
+(constante `MULTI_RECORD_SUBJECTS`) y muestrea esos **sujetos**
+(no los latidos): todos los latidos de un registro van juntos
+a train o a test **y** los registros del mismo sujeto caen en
+el mismo bloque.
 
-- `test_size=0.2` sobre pacientes → `ceil(0.2 × 48)` =
-  **10 pacientes de test / 38 de train** (train nunca vacío).
+- **Agrupación explícita y centralizada** (#61): en MIT-BIH
+  hay **48 registros de 47 sujetos** y el único par que
+  comparte sujeto es **201 y 202** (PhysioNet, Usage Notes:
+  *«records 201 and 202 should be assigned to the same
+  partition because they originate from the same subject»*;
+  48 − 47 = exactamente un sujeto con dos registros). El
+  mapeo es `MULTI_RECORD_SUBJECTS = {"202": "201"}` y vive
+  en `backend/app/baseline.py` (sin lógica duplicada: lo
+  aplica el propio `split_por_paciente`). Con IDs sin
+  agrupar la función es **identidad** (regresión: los tests
+  de T10 siguen intactos).
+- `test_size=0.2` sobre sujetos → `ceil(0.2 × 47)` =
+  **10 sujetos de test / 37 de train** (train nunca vacío).
 - Determinista con `random_state=42`
   (`numpy.random.default_rng`).
 - Verificación **anti-fuga dentro de la propia función**: si
-  tras la partición un paciente apareciera en ambos conjuntos
-  (imposible por construcción), lanza `AssertionError`.
-- Resultado real de T13: **train 38 pacientes / 88.723 latidos
-  y test 10 pacientes / 23.829 latidos**, intersección vacía
-  (reconstruida y verificada de forma independiente por @qa).
-  Pacientes de test: `105, 122, 201, 207, 209, 214, 219, 231,
-  232, 234`.
+  tras la partición un registro **o un sujeto** apareciera en
+  ambos conjuntos (imposible por construcción), lanza
+  `AssertionError`.
+- **Resultado real** (re-entrenamiento de #61, 2026-11-11):
+  **train 37 sujetos (38 registros) / 86.853 latidos y test
+  10 sujetos (10 registros) / 25.699 latidos**, intersección
+  de sujetos vacía. Registros de test: `105, 119, 200, 203,
+  207, 212, 213, 231, 232, 234`; **201 y 202 van juntos a
+  train** con la semilla 42.
+- **Histórico T13** (antes de #61, split por ID de registro):
+  train 38 registros / 88.723 latidos y test 10 registros /
+  23.829 latidos, intersección vacía (reconstruida y
+  verificada de forma independiente por @qa). Registros de
+  test: `105, 122, 201, 207, 209, 214, 219, 231, 232, 234`
+  — `201` en test y `202` en train: la **fuga residual de 1
+  sujeto** que #61 corrigió.
 
 **Justificación (por qué no partir por latido):** los
 registros de MIT-BIH tienen correlación **intra-paciente**
@@ -283,10 +306,11 @@ en train *y* test) da métricas artificialmente mejores:
 
 Esos +16 pts de accuracy son **inflados por la fuga**, no
 calidad real: por eso el proyecto usa solo el split por
-paciente. Detalle menor: PhysioNet recomienda asignar los
-registros **201 y 202 al mismo bloque** (pertenecen al mismo
-sujeto); en el split con semilla 42, `202` va a train y `201`
-a test (ver limitación §13.8).
+sujeto. La fuga residual de 1 sujeto detectada en T12 (los
+registros **201 y 202**, mismo sujeto, en bloques distintos
+con la semilla 42) quedó **resuelta en #61** agrupando por
+sujeto real: hoy el split es **sin fuga por sujeto**
+(§13.8).
 
 ## 10. Features y modelo (T10, `backend/app/baseline.py`)
 
@@ -334,66 +358,93 @@ validados al cargar: `model_version`, `dataset_id`,
 `sklearn_version`, clases AAMI, `random_state`,
 `feature_names`, `fs`, etc.
 
-## 11. Métricas reales (T13, issue #16)
+## 11. Métricas reales (T13 y re-validación #61, issues #16 y #61)
 
-Entrenamiento **real** con los 48 registros MIT-BIH validado
-por @qa el 2026-11-09 (0 defectos): descarga ~49 s,
-`build_dataset` 112.552 latidos, entrenamiento ~179 s y
-**determinismo confirmado** (re-ejecución con `rs=42`
-idéntica, 174 s). Las cifras agregadas coinciden exactamente
-con el cierre de issue #16 y con `docs/CHANGELOG.md`.
+Entrenamiento **real** con los 48 registros MIT-BIH. Cifras
+**vigentes desde 2026-11-11** (re-entrenamiento tras #61:
+split por **sujeto real**, `MODEL_VERSION =
+baseline-sklearn-0.2.0`, mismo dataset — `dataset_id =
+818a3a4ad239bf44`, 112.552 latidos). El entrenamiento de
+T13 (2026-11-09, validado por @qa con 0 defectos y
+determinismo confirmado) queda como **histórico** más abajo
+y en el comentario de cierre de issue #16.
 
-**Resultado en test** (23.829 latidos de 10 pacientes,
-nunca vistos en train):
+**Resultado en test** (25.699 latidos de 10 sujetos, nunca
+vistos en train; con `random_state=42`, **201 y 202 van
+juntos a train** — §9):
 
-| Métrica | Valor |
-| --- | --- |
-| Exactitud (accuracy) | **0,5158** |
-| Sensibilidad macro | **0,3584** |
-| Especificidad macro | **0,8823** |
+| Métrica | Valor (desde #61, 2026-11-11) | Histórico T13 (antes de #61) |
+| --- | --- | --- |
+| Exactitud (accuracy) | **0,5582** | 0,5158 |
+| Sensibilidad macro | **0,5884** | 0,3584 |
+| Especificidad macro | **0,8992** | 0,8823 |
 
-**Por clase** (`zero_division=0`; orden AAMI):
+> Al corregir el split, la **partición de test cambió**
+> (47 sujetos en vez de 48 registros → otros 10 sujetos:
+> `105, 119, 200, 203, 207, 212, 213, 231, 232, 234`), así
+> que la comparación refleja el **reparto completo nuevo**,
+> no solo la fuga corregida. El control con fuga completa de
+> §9 (+16 pts) sigue siendo la referencia del efecto de una
+> fuga sobre este dataset.
+
+**Por clase** (`zero_division=0`; orden AAMI; test
+2026-11-11, 25.699 latidos):
 
 | Clase | Significado | Sensibilidad | Especificidad | Soporte (test) | TP | FP | FN | TN |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| N | latido normal | 0,5481 | 0,9032 | 19.544 | 10.713 | 415 | 8.831 | 3.870 |
-| S | supraventricular | 0,1895 | 0,8141 | 2.058 | 390 | 4.048 | 1.668 | 17.723 |
-| V | ventricular | 0,5045 | 0,9074 | 775 | 391 | 2.135 | 384 | 20.919 |
-| F | fusión | 0,0000 | 0,8790 | 4 | 0 | 2.882 | 4 | 20.943 |
-| Q | desconocida/artefacto | 0,5497 | 0,9080 | 1.448 | 796 | 2.059 | 652 | 20.322 |
+| N | latido normal | 0,5390 | 0,9520 | 19.931 | 10.743 | 277 | 9.188 | 5.491 |
+| S | supraventricular | 0,4206 | 0,9036 | 1.600 | 673 | 2.323 | 927 | 21.776 |
+| V | ventricular | 0,8758 | 0,8902 | 2.190 | 1.918 | 2.581 | 272 | 20.928 |
+| F | fusión | 0,6192 | 0,8748 | 365 | 226 | 3.173 | 139 | 22.161 |
+| Q | desconocida/artefacto | 0,4873 | 0,8755 | 1.613 | 786 | 2.999 | 827 | 21.087 |
 
 **Matriz de confusión 5×5** (filas = clase real, columnas =
-predicha, orden N S V F Q):
+predicha, orden N S V F Q; test 2026-11-11):
 
 | real \ predicha | N | S | V | F | Q |
 | --- | --- | --- | --- | --- | --- |
-| **N** | 10.713 | 3.925 | 1.575 | 2.827 | 504 |
-| **S** | 337 | 390 | 53 | 2 | 1.276 |
-| **V** | 51 | 5 | 391 | 52 | 276 |
-| **F** | 1 | 0 | 0 | 0 | 3 |
-| **Q** | 26 | 118 | 507 | 1 | 796 |
+| **N** | 10.743 | 2.158 | 1.798 | 3.075 | 2.157 |
+| **S** | 142 | 673 | 50 | 30 | 705 |
+| **V** | 44 | 32 | 1.918 | 64 | 132 |
+| **F** | 79 | 5 | 50 | 226 | 5 |
+| **Q** | 12 | 128 | 683 | 4 | 786 |
 
-Distribución de predicciones en test: N 11.128, S 4.438,
-V 2.526, F 2.882, Q 2.855 (las 5 clases reciben
+Distribución de predicciones en test: N 11.020, S 2.996,
+V 4.499, F 3.399, Q 3.785 (las 5 clases reciben
 predicciones: el baseline **no colapsa** a una sola clase).
+Coherencia verificada: filas de la CM = soportes de la
+tabla; trazón 14.346 / 25.699 = 0,5582 = accuracy; macros =
+medias de las 5 filas.
 
 **Lectura honesta**:
 
-- Cifras: **accuracy 0,5158 · sens_macro 0,3584 ·
-  spec_macro 0,8823**, verificadas a mano y con sklearn por
-  @qa (coincidencia exacta); ver **issue #16** para el
-  informe completo de validación (incluye este CM y el
-  control anti-fuga de §9).
-- **Nota T13-1** (issue #16): el soporte de **F en test es
-  solo 4 latidos** → `sens F = 0` **no es estadísticamente
-  significativa**; señálalo siempre que se reporte.
+- Cifras: **accuracy 0,5582 · sens_macro 0,5884 ·
+  spec_macro 0,8992** (stdout de
+  `python -m app.train_model`, 2026-11-11; coherencia
+  aritmética comprobada fila a fila, ver arriba); ver
+  **issue #16** para el informe completo de T13 (con el CM
+  histórico y el control anti-fuga de §9).
+- **Nota T13-1 actualizada (#61)**: en el test de T13 la
+  clase **F** tenía soporte **4** → `sens F = 0` no era
+  significativa; con el reparto nuevo F tiene **365**
+  latidos en test (`sens F = 0,6192`), mucho más fiable.
+  Queda matizada, no eliminada: F sigue siendo escaso a
+  nivel global (802 de 112.552, §13.3).
 - Es un **baseline lineal intencionadamente simple**: unas
   métricas modestas son esperables y honestas; no mide
   capacidad diagnóstica ninguna.
 - El modelo se equivoca sobre todo confundiendo N con
-  F/S/Q (véase la fila N de la CM: 3.925 N predichos como S,
-  2.827 como F…) y es conservador con S/V/Q (recall bajo,
-  especificidad alta).
+  F/V/Q/S (fila N de la CM: 3.075 N→F, 2.158 N→S, 2.157
+  N→Q, 1.798 N→V) y es conservador con S y Q (recall 0,42 y
+  0,49, especificidad ~0,90); destaca en V (sens 0,8758).
+
+**Histórico T13 (2026-11-09, antes de #61):** test de
+23.829 latidos de 10 registros (split por ID de registro,
+con la fuga residual 201/202 de §13.8) → accuracy 0,5158 ·
+sens_macro 0,3584 · spec_macro 0,8823. Tabla por clase y CM
+5×5 completas en el **issue #16** (transcritas allí para
+que la cita sea autosuficiente): N sens 0,5481 · S 0,1895 ·
+V 0,5045 · F 0,0000 (soporte 4) · Q 0,5497.
 
 ## 12. Uso en la API (T11, issues #44–#47)
 
@@ -454,7 +505,7 @@ modelo responde:
    si la inferencia real lanza una excepción, se usa el
    heurístico de Parte I con sus etiquetas y su versión.
    La respuesta incluye siempre `model_version`:
-   `baseline-sklearn-0.1.0` con modelo real,
+   `baseline-sklearn-0.2.0` con modelo real,
    `heuristic-mvp-0.1.0` con fallback.
 
 **Entrega del artefacto** (nunca commiteado):
@@ -462,7 +513,7 @@ modelo responde:
 | Pieza | Detalle |
 | --- | --- |
 | Env var | `MODEL_PATH` (default `data/models/baseline.joblib`, relativa al WORKDIR); leída en runtime, `~` expandido |
-| CLI | `python -m app.train_model` desde `backend/`: descarga (idempotente) → `build_dataset` → split por paciente → imprime métricas por stdout (accuracy, sensibilidad/especificidad macro, matriz de confusión…) y escribe el artefacto. Exit 0/1/2 |
+| CLI | `python -m app.train_model` desde `backend/`: descarga (idempotente) → `build_dataset` → split por sujeto real → imprime métricas por stdout (accuracy, sensibilidad/especificidad macro, matriz de confusión…) y escribe el artefacto. Exit 0/1/2 |
 | Compose | `docker-compose.yml`: `MODEL_PATH: ${MODEL_PATH:-data/models/baseline.joblib}` + volumen **`./data:/app/data:ro`** (el contenedor solo lee) |
 | Git | `*.joblib` y `data/` en `.gitignore`; las pruebas escriben solo en `tmp_path` |
 
@@ -484,9 +535,10 @@ en verde.
    criterios clínicos de voltaje y la mayoría de modelos
    usan 12 leads.
 3. **Clases desbalanceadas.** N es el **80,5 %** del dataset
-   (90.588 de 112.552); F solo 802 (0,7 %) y en test **F
-   tiene soporte 4** → `sens F = 0` no es significativa
-   (Nota T13-1, issue #16). `class_weight="balanced"` ayuda
+   (90.588 de 112.552); F solo 802 (0,7 %). En el test
+   vigente (#61) F tiene soporte **365** (era **4** en T13:
+   `sens F = 0` no era significativa entonces — Nota T13-1,
+   §11). `class_weight="balanced"` ayuda
    pero no elimina el desbalance.
 4. **Dataset antiguo.** Grabaciones de **1975-1979**
    (distribuidas por primera vez en 1980), cinta analógica,
@@ -501,21 +553,27 @@ en verde.
    **resamplean** al fs del artefacto (§12), lo que puede
    degradar señales muy distintas (y existe el tope de
    4 M de muestras con truncado por prefijo).
-6. **Métricas modestas.** Accuracy 0,5158 y sensibilidad
-   macro 0,3584 en test por paciente (§11): es un baseline
-   lineal, falla con frecuencia (p. ej. la sensibilidad de S
-   es 0,1895). Un baseline, no un clasificador fiable.
+6. **Métricas modestas.** Accuracy 0,5582 y sensibilidad
+   macro 0,5884 en test por sujeto (§11): es un baseline
+   lineal, falla con frecuencia (p. ej. la sensibilidad de Q
+   es 0,4873 y la de N 0,5390). Un baseline, no un
+   clasificador fiable.
 7. **Agregado y confianza no validados clínicamente.** El
    umbral de agregado no-N 0,20 y el desempate por conteo
    son reglas de ingeniería documentadas, no criterios
    clínicos; la confianza es `max(predict_proba)` **sin
    calibrar** (misma advertencia que §4).
-8. **Split por ID de registro.** PhysioNet recomienda que
-   los registros **201 y 202** (mismo sujeto) caigan en el
-   mismo bloque; con la semilla 42, `202` está en train y
-   `201` en test, así que puede quedar una **fuga residual de
-   1 sujeto sobre 47**. Menor (el control con fuga completa
-   de §9 está a +16 pts), pero corregible (§14).
+8. **Split por sujeto real (corregido en #61).** Hasta #61
+   el split era por **ID de registro** y dejaba una fuga
+   residual de 1 sujeto sobre 47 (PhysioNet: los registros
+   **201 y 202** son del mismo sujeto y con la semilla 42
+   iban a bloques distintos). Desde #61,
+   `split_por_paciente` agrupa por sujeto real
+   (`MULTI_RECORD_SUBJECTS = {"202": "201"}`): **47
+   sujetos, `ceil(0.2 × 47) = 10` en test y sin fuga por
+   sujeto** (§9). Al corregirlo las métricas pasaron de
+   0,5158/0,3584/0,8823 a 0,5582/0,5884/0,8992, pero con
+   test distinto: no atribuible solo a la fuga (§11).
 9. **Calidad dependiente del artefacto.** Sin artefacto (o
    corrupto) la API responde con el **heurístico** (§1–§6):
    comprueba siempre `model_version` en la respuesta para
@@ -533,7 +591,7 @@ en verde.
 
 ## 14. Hoja de ruta del modelo (actualizada — antes §7)
 
-**Hecho (Fase 2, T09–T14, issues #12–#17)**:
+**Hecho (Fase 2, T09–T14, issues #12–#17 y #61)**:
 
 1. ✅ Descarga/lectura/etiquetado de **MIT-BIH** con `wfdb`
    y dataset AAMI serializable (T09).
@@ -544,6 +602,9 @@ en verde.
    separado, validadas por @qa (T13, #16) — §11.
 4. ✅ Integración en `POST /ecg/analyze` con fallback
    heurístico (T11, #14) y pruebas (T14, #17) — §12.
+5. ✅ **Split por sujeto real** (registros 201/202 agrupados)
+   y métricas re-validadas con re-entrenamiento (#61) —
+   §9/§11.
 
 **Pendiente** (en orden de idoneidad como baseline ya existe):
 
@@ -552,24 +613,22 @@ en verde.
    descartado en §10) o redes neuronales (**1D-CNN** sobre la
    ventana cruda), siempre con comparación contra este
    baseline.
-2. **Corregir el split 201/202** agrupando por sujeto real
-   (§13.8) y re-validar métricas.
-3. **Multi-lead y 12 leads**: entrenar con más derivaciones
+2. **Multi-lead y 12 leads**: entrenar con más derivaciones
    y probar [PTB-XL](https://physionet.org/content/ptb-xl/)
    (5 superclases) para superar el "un solo lead".
-4. **Soporte WFDB/DICOM como entrada de la API** (hoy la
+3. **Soporte WFDB/DICOM como entrada de la API** (hoy la
    API acepta JSON/CSV; `wfdb` solo alimenta el dataset).
-5. **Evaluación adicional**: otros datasets públicos
+4. **Evaluación adicional**: otros datasets públicos
    (p. ej. MIT-BIH Noise Stress Test para ruido) y
    calibración de la confianza.
-6. Documentar aquí cada nueva versión: métricas, dataset,
+5. Documentar aquí cada nueva versión: métricas, dataset,
    limitaciones y bump de `model_version`.
 
 ---
 
 *Documentación del modelo: Parte I para el issue #5 (T03) y
 Parte II para los issues #12–#17 (Fase 2, cerrada con T12,
-issue #15). Mantener sincronizada con
-`backend/app/model.py`, `signal.py`, `baseline.py`,
+issue #15) y #61 (split por sujeto real). Mantener sincronizada
+con `backend/app/model.py`, `signal.py`, `baseline.py`,
 `inference.py`, `model_loader.py`, `mitbih*.py` y
 `train_model.py`.*
