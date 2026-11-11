@@ -58,7 +58,7 @@ cd backend && python -m app.train_model
 # 2. Levantar (el backend verá el artefacto vía el volumen)
 docker compose up -d --build
 
-# 3. Verificar: la respuesta trae model_version = baseline-sklearn-0.1.0
+# 3. Verificar: la respuesta trae model_version = baseline-sklearn-0.2.0
 curl -s http://localhost:8000/health
 # (esquema abreviado: la señal real necesita ≥100 muestras)
 curl -s -X POST http://localhost:8000/ecg/analyze \

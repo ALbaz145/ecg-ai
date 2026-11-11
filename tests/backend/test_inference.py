@@ -9,7 +9,7 @@ semántica de agregado, confianza y zonas.
 
 Cobertura frente a los criterios de aceptación de #44:
 
-- con artefacto: ``model_version = baseline-sklearn-0.1.0`` y
+- con artefacto: ``model_version = baseline-sklearn-0.2.0`` y
   ``anomalia`` del vocabulario AAMI en español; contrato
   ``AnalysisResponse`` intacto (mismas claves);
 - ``zonas_anomalas``: ``0 <= inicio < fin <= n`` en la **señal
@@ -484,7 +484,7 @@ def test_artefacto_latidos_n_tiled_normal(client_con_modelo) -> None:
     body = response.json()
     _assert_contrato(body, len(signal))
     assert body["anomalia"] == "normal"
-    assert body["model_version"] == ARTIFACT_VERSION == "baseline-sklearn-0.1.0"
+    assert body["model_version"] == ARTIFACT_VERSION == "baseline-sklearn-0.2.0"
     assert body["zonas_anomalas"] == []
     assert 0.0 < body["confianza"] <= 1.0
 
@@ -626,14 +626,14 @@ def test_version_de_la_respuesta_sale_de_los_metadatos_del_artefacto(
 ) -> None:
     """``model_version`` = la de los **metadatos** del artefacto (AC #17.1).
 
-    Además de ``== baseline-sklearn-0.1.0`` con artefactos reales, este
+    Además de ``== baseline-sklearn-0.2.0`` con artefactos reales, este
     test prueba que la versión **no está hardcodeada** en el pipeline:
     con un artefacto cuyos metadatos declaran otra versión, la
     respuesta refleja exactamente ``model.meta["model_version"]``. Si
     el pipeline dejara de usar el modelo real (o escribiera una
     constante en vez de leer los metadatos), fallaría aquí.
     """
-    version_metadata = "baseline-sklearn-0.2.0"
+    version_metadata = "baseline-sklearn-9.9.9"  # ≠ MODEL_VERSION (0.2.0)
     _modelo_controlado(
         monkeypatch,
         patron=["N"],

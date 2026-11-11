@@ -48,14 +48,19 @@ Features por latido (RR, amplitud, FC y morphology stats)
     calcula sobre la ventana cruda en mV, igual que las medidas de
     amplitud de ``extract_features``.
 
-Split train/test **por paciente** (:func:`split_por_paciente`)
+Split train/test **por sujeto real** (:func:`split_por_paciente`)
     La partición se hace sobre los **IDs de paciente** (filas de
     ``paciente_id``), no sobre latidos: un paciente no puede caer en
     train y test a la vez (fuga de datos; los registros de MIT-BIH
     tienen correlación intra-paciente y el modelo memorizaría al
-    paciente, no a la arritmia). Determinista con ``random_state``,
-    sin solape (verificado en la propia función) y con ambos
-    conjuntos nunca vacíos.
+    paciente, no a la arritmia). Además, desde #61 los registros del
+    **mismo sujeto** se agrupan antes de partir: en MIT-BIH los
+    registros **201 y 202** son de la misma persona (PhysioNet), así
+    que van siempre al mismo bloque (:data:`MULTI_RECORD_SUBJECTS`
+    aplicado por :func:`_agrupar_sujetos`; 48 registros → 47
+    sujetos). Determinista con ``random_state``, sin solape (verificado
+    en la propia función, a nivel de registro **y** de sujeto) y con
+    ambos conjuntos nunca vacíos.
 
 Modelo: ``LogisticRegression(class_weight="balanced")``
     Justificación (baseline simple y rápido, sklearn 1.8.0):
@@ -139,10 +144,16 @@ from app.signal import (
 #: Versión del modelo entrenado (issue #13: versión + identificador de
 #: dataset en la serialización). Se guarda en los metadatos y
 #: :func:`load_model` la exige: cualquier cambio que altere features,
-#: arquitectura o entrenamiento debe **bumpirla** (p. ej.
-#: ``baseline-sklearn-0.2.0``) para que los archivos antiguos fallen
-#: con un error claro en vez de cargar en silencio con semántica nueva.
-MODEL_VERSION = "baseline-sklearn-0.1.0"
+#: arquitectura o entrenamiento debe **bumpirla** para que los
+#: archivos antiguos fallen con un error claro en vez de cargar en
+#: silencio con semántica nueva.
+#:
+#: Historial: ``baseline-sklearn-0.1.0`` = T10-T13 (split por ID de
+#: registro); ``baseline-sklearn-0.2.0`` = #61 (split por **sujeto
+#: real**: 201/202 agrupados ⇒ mismo pipeline, distinto entrenamiento
+#: y métricas; los artefactos 0.1.0 ya no cargan: regenerar con
+#: ``python -m app.train_model``).
+MODEL_VERSION = "baseline-sklearn-0.2.0"
 
 #: Máximo RR medible con el vecino visible en la ventana: el pico R
 #: vecino cabe dentro de ±``BEAT_WINDOW_S`` → ``RR < 2 * BEAT_WINDOW_S``.
@@ -340,8 +351,59 @@ class BeatFeatureExtractor:
 
 
 # ---------------------------------------------------------------------------
-# Split por paciente
+# Split por paciente (sujeto real)
 # ---------------------------------------------------------------------------
+
+
+#: Registros MIT-BIH que pertenecen al **mismo sujeto** (issue #61).
+#:
+#: PhysioNet, *Usage Notes* de ``mitdb`` 1.0.0
+#: (https://physionet.org/content/mitdb/1.0.0/): *«For
+#: subject-independent evaluation, records 201 and 202 should be
+#: assigned to the same partition because they originate from the same
+#: subject»*. Es el **único** par: la base tiene 48 registros de
+#: **47 sujetos** (abstract), es decir exactamente un sujeto con dos
+#: registros — y ese par es 201/202 (verificado con PhysioNet y con
+#: la literatura citada en ``docs/MODEL.md`` §8). Si algún día
+#: apareciera otro par, basta con añadirlo aquí: el split lee el
+#: mapeo de esta única constante (sin lógica duplicada).
+#:
+#: Cada clave (ID de registro) mapea a su **sujeto representante**:
+#: :func:`_agrupar_sujetos` la aplica antes de partir, de modo que
+#: ``split_por_paciente`` agrupa por sujeto real. El contrato de
+#: ``EcgDataset.paciente_id`` **no cambia**: sigue siendo el ID de
+#: registro por latido (la agrupación es una relación
+#: registro→sujeto de MIT-BIH, no una propiedad del dataset).
+MULTI_RECORD_SUBJECTS: dict[str, str] = {"202": "201"}
+
+
+def _agrupar_sujetos(ids: np.ndarray) -> np.ndarray:
+    """Mapea cada ID de registro a su **sujeto real** (issue #61).
+
+    Aplica :data:`MULTI_RECORD_SUBJECTS` elemento a elemento. Si
+    **ningún** ID del array está en el mapeo devuelve el propio array
+    (identidad): con IDs sin agrupar el split es idéntico al de
+    T10/T13, garantía de no-regresión. Solo se normaliza a string si
+    hay alguna coincidencia (IDs no textuales con un 201/202).
+
+    Parameters
+    ----------
+    ids:
+        Array 1-D de IDs (el contrato de ``EcgDataset.paciente_id``
+        son strings de ID de registro).
+
+    Returns
+    -------
+    np.ndarray
+        Array de la misma longitud con el ID sustituido por su sujeto
+        representante donde aplique el mapeo (o el propio ``ids``).
+    """
+    if ids.size == 0 or not MULTI_RECORD_SUBJECTS:
+        return ids
+    claves = [str(valor) for valor in ids]
+    if not any(clave in MULTI_RECORD_SUBJECTS for clave in claves):
+        return ids
+    return np.array([MULTI_RECORD_SUBJECTS.get(clave, clave) for clave in claves])
 
 
 def split_por_paciente(
@@ -350,11 +412,17 @@ def split_por_paciente(
     test_size: float = 0.2,
     random_state: int = 42,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Partición train/test **por paciente** (sin fuga de datos).
+    """Partición train/test **por sujeto real** (sin fuga de datos).
 
-    Muestrea **IDs de paciente** (no latidos) y devuelve los índices
-    de *filas* de cada conjunto: todos los latidos de un paciente van
-    juntos a train o a test. Determinista para un mismo
+    Muestrea **sujetos** (no latidos) y devuelve los índices de
+    *filas* de cada conjunto: todos los latidos de un paciente van
+    juntos a train o a test **y** los registros del mismo sujeto caen
+    en el mismo bloque (issue #61: en MIT-BIH los registros **201 y
+    202** son de la misma persona — PhysioNet *Usage Notes*: «records
+    201 and 202 should be assigned to the same partition» — y solo
+    ese par comparte sujeto entre los 48 registros). El mapeo se
+    aplica con :func:`_agrupar_sujetos` sobre
+    :data:`MULTI_RECORD_SUBJECTS`. Determinista para un mismo
     ``random_state`` (``numpy.random.default_rng``) y con los índices
     ordenados ascendentemente.
 
@@ -362,11 +430,13 @@ def split_por_paciente(
     ----------
     paciente_id:
         Array 1-D con el ID del registro **por latido** (el campo
-        ``paciente_id`` de ``EcgDataset``).
+        ``paciente_id`` de ``EcgDataset``). Se agrupa a sujeto con
+        :func:`_agrupar_sujetos` antes de partir.
     test_size:
-        Fracción de **pacientes** para test, en ``(0, 1)``. El número
-        de pacientes de test es ``ceil(test_size * n_pacientes)``,
-        acotado a ``n_pacientes - 1`` para que train nunca quede vacío.
+        Fracción de **sujetos** para test, en ``(0, 1)``. El número
+        de sujetos de test es ``ceil(test_size * n_sujetos)``,
+        acotado a ``n_sujetos - 1`` para que train nunca quede vacío
+        (MIT-BIH completo: 47 sujetos → ``ceil(0.2 * 47) = 10``).
     random_state:
         Semilla de la permutación (42 por defecto).
 
@@ -379,13 +449,15 @@ def split_por_paciente(
     Raises
     ------
     ValueError
-        Si ``paciente_id`` no es 1-D o está vacío, hay un solo
-        paciente (no se puede particionar) o ``test_size`` no está en
+        Si ``paciente_id`` no es 1-D o está vacío, tras agrupar hay
+        un solo sujeto (no se puede particionar: p. ej. solo 201 y
+        202, que son la misma persona) o ``test_size`` no está en
         ``(0, 1)``.
     AssertionError
-        Defensivo: si tras la partición un paciente apareciera en los
-        dos conjuntos (imposible por construcción; es la garantía
-        anti-fuga del issue #13).
+        Defensivo: si tras la partición un registro **o un sujeto**
+        apareciera en los dos conjuntos (imposible por construcción;
+        es la garantía anti-fuga del issue #13, reforzada a nivel de
+        sujeto en #61).
     """
     ids = np.asarray(paciente_id)
     if ids.ndim != 1:
@@ -397,10 +469,11 @@ def split_por_paciente(
     if not 0.0 < test_size < 1.0:
         raise ValueError(f"test_size debe estar en (0, 1); recibido: {test_size!r}.")
 
-    unicos = np.unique(ids)  # orden estable y determinista
+    sujetos = _agrupar_sujetos(ids)  # 48 registros → 47 sujetos (#61)
+    unicos = np.unique(sujetos)  # orden estable y determinista
     if unicos.size < 2:
         raise ValueError(
-            "Se necesitan al menos 2 pacientes para el split por paciente "
+            "Se necesitan al menos 2 pacientes (sujetos) para el split por paciente "
             f"(recibido: {unicos.size} → {unicos.tolist()})."
         )
 
@@ -408,17 +481,20 @@ def split_por_paciente(
     n_test = min(n_test, int(unicos.size) - 1)  # train nunca vacío
     rng = np.random.default_rng(random_state)
     permutados = rng.permutation(unicos)
-    pacientes_test = permutados[:n_test]
-    pacientes_train = permutados[n_test:]
+    sujetos_test = permutados[:n_test]
+    sujetos_train = permutados[n_test:]
 
-    train_idx = np.flatnonzero(np.isin(ids, pacientes_train))
-    test_idx = np.flatnonzero(np.isin(ids, pacientes_test))
+    train_idx = np.flatnonzero(np.isin(sujetos, sujetos_train))
+    test_idx = np.flatnonzero(np.isin(sujetos, sujetos_test))
 
-    # Verificación anti-fuga (defensiva) sobre la salida real.
-    solape = set(ids[train_idx].tolist()) & set(ids[test_idx].tolist())
-    if solape:
+    # Verificación anti-fuga (defensiva) sobre la salida real: ni el
+    # registro ni el sujeto pueden estar en los dos conjuntos (#61).
+    solape_sujetos = set(sujetos[train_idx].tolist()) & set(sujetos[test_idx].tolist())
+    solape_ids = set(ids[train_idx].tolist()) & set(ids[test_idx].tolist())
+    if solape_sujetos or solape_ids:
         raise AssertionError(
-            f"Fuga de datos: pacientes en train y test a la vez: {sorted(solape)}."
+            "Fuga de datos: pacientes en train y test a la vez: "
+            f"sujetos={sorted(solape_sujetos)} registros={sorted(solape_ids)}."
         )
     return train_idx, test_idx
 
@@ -499,12 +575,13 @@ def train_baseline(
     test_size: float = 0.2,
     random_state: int = 42,
 ) -> tuple[BaselineModel, Metrics]:
-    """Entrena el baseline con split por paciente y lo evalúa en test.
+    """Entrena el baseline con split por sujeto real y lo evalúa en test.
 
-    Flujo: valida entradas → :func:`split_por_paciente` → features de
-    los latidos de train (:class:`BeatFeatureExtractor`) →
-    ``fit`` del pipeline → :func:`evaluate` **sobre los pacientes de
-    test** (nunca sobre train).
+    Flujo: valida entradas → :func:`split_por_paciente` (agrupando los
+    registros del mismo sujeto, p. ej. 201/202, issue #61) → features
+    de los latidos de train (:class:`BeatFeatureExtractor`) → ``fit``
+    del pipeline → :func:`evaluate` **sobre los sujetos de test**
+    (nunca sobre train).
 
     Parameters
     ----------

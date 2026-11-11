@@ -7,7 +7,9 @@ Los ``.joblib`` se escriben solo en ``tmp_path`` (nunca se commitean).
 Cobertura frente a los criterios de aceptación de #13:
 
 - split por paciente sin fuga (disjoint en pacientes **y** en índices,
-  determinista, ``test_size`` respetado, errores claros);
+  determinista, ``test_size`` respetado, errores claros) y **por sujeto
+  real** (#61: los registros 201/202 de MIT-BIH, mismo sujeto, nunca
+  en train y test a la vez);
 - features reutilizando ``bandpass_filter``/``detect_r_peaks`` y las
   constantes de ``app.signal`` (RR/FC, amplitud, morphology);
 - métricas por clase: sensibilidad, especificidad, soporte y matriz de
@@ -38,6 +40,7 @@ from app.baseline import (
     train_baseline,
     train_from_dataset,
 )
+from app.mitbih import RECORDS
 from app.mitbih_dataset import AAMI_CLASSES, EcgDataset
 
 FS = 360.0
@@ -216,6 +219,128 @@ def test_split_test_size_invalido_error(test_size: float) -> None:
     """test_size fuera de (0, 1) → ValueError."""
     with pytest.raises(ValueError, match="test_size"):
         split_por_paciente(np.array(["100", "101"]), test_size=test_size)
+
+
+# ---------------------------------------------------------------------------
+# Split por sujeto real: 201/202 (issue #61)
+# ---------------------------------------------------------------------------
+
+
+def _ids_mitdb(latidos_por_registro: int = 6) -> np.ndarray:
+    """Los 48 IDs canónicos de ``mitdb`` (sin duplicar la lista: de
+    ``app.mitbih.RECORDS``), cada uno repetido ``latidos_por_registro``
+    veces como si fueran filas de ``paciente_id``."""
+    return np.array(
+        [registro for registro in RECORDS for _ in range(latidos_por_registro)]
+    )
+
+
+def test_multi_record_subjects_solo_el_par_201_202() -> None:
+    """El mapeo es exactamente {202 → 201}: único par multi-sujeto (#61).
+
+    PhysioNet: 48 registros de **47 sujetos** ⇒ exactamente un sujeto
+    con dos registros, y ese par es 201/202 (Usage Notes de mitdb).
+    """
+    assert dict(baseline.MULTI_RECORD_SUBJECTS) == {"202": "201"}
+
+    sujetos = baseline._agrupar_sujetos(np.array(RECORDS))
+    assert len(np.unique(sujetos)) == 47  # 48 registros → 47 sujetos
+    for registro, sujeto in zip(RECORDS, sujetos.tolist(), strict=True):
+        esperado = baseline.MULTI_RECORD_SUBJECTS.get(registro, registro)
+        assert sujeto == esperado, f"registro {registro} agrupado como {sujeto}"
+
+
+@pytest.mark.parametrize("random_state", [0, 1, 7, 42, 123, 2024])
+def test_split_201_202_nunca_en_train_y_test_a_la_vez(random_state: int) -> None:
+    """201 y 202 (mismo sujeto) van siempre al mismo bloque (#61).
+
+    Con la semilla 42, antes de #61 ``202`` iba a train y ``201`` a
+    test: este test habría fallado con el split por ID de registro.
+    """
+    ids = _ids_mitdb()
+    train_idx, test_idx = split_por_paciente(ids, random_state=random_state)
+
+    en_train = set(ids[train_idx].tolist())
+    en_test = set(ids[test_idx].tolist())
+    assert ("201" in en_train) == ("202" in en_train)
+    assert ("201" in en_test) == ("202" in en_test)
+    # El sujeto está en exactamente uno de los dos bloques (anti-fuga).
+    assert ("201" in en_train) ^ ("201" in en_test)
+    # El resto de registros, sin agrupar: siguen disjuntos entre bloques.
+    assert en_train.isdisjoint(en_test)
+
+
+def test_split_201_202_determinista_y_anti_fuga_a_nivel_sujeto() -> None:
+    """Misma semilla → misma partición; el assert anti-fuga cubre sujetos."""
+    ids = _ids_mitdb()
+    a = split_por_paciente(ids, random_state=42)
+    b = split_por_paciente(ids, random_state=42)
+    np.testing.assert_array_equal(a[0], b[0])
+    np.testing.assert_array_equal(a[1], b[1])
+
+    sujetos = baseline._agrupar_sujetos(ids)
+    sujetos_train = set(sujetos[a[0]].tolist())
+    sujetos_test = set(sujetos[a[1]].tolist())
+    assert sujetos_train and sujetos_test
+    assert sujetos_train.isdisjoint(sujetos_test)  # sin fuga por sujeto
+    # 47 sujetos: n_test = ceil(0.2 * 47) = 10 (train: 37 sujetos).
+    assert len(sujetos_test) == 10
+    assert len(sujetos_train) == 37
+
+
+def test_split_solo_201_202_es_un_sujeto_y_no_se_puede_partir() -> None:
+    """201 y 202 agrupados = 1 solo sujeto → ValueError explícito."""
+    ids = np.array(["201"] * 5 + ["202"] * 5)
+    with pytest.raises(ValueError, match="al menos 2 pacientes"):
+        split_por_paciente(ids)
+
+
+def test_split_ids_sin_agrupar_identidad_y_test_size_igual() -> None:
+    """Sin 201/202 la agrupación es identidad: comportamiento de T10 intacto."""
+    _, _, paciente_id = _dataset_sintetico(n_pacientes=14, repeticiones=1)
+
+    np.testing.assert_array_equal(baseline._agrupar_sujetos(paciente_id), paciente_id)
+
+    train_idx, test_idx = split_por_paciente(paciente_id)
+    assert len(set(paciente_id[test_idx].tolist())) == 3  # ceil(0.2 * 14)
+    assert len(set(paciente_id[train_idx].tolist())) == 11
+
+
+def test_train_baseline_split_interno_agrupa_sujetos(monkeypatch) -> None:
+    """El split que usa ``train_baseline`` agrupa 201/202 (sin lógica duplicada).
+
+    Se espía la llamada real a ``split_por_paciente`` desde
+    ``train_baseline`` y se comprueba que el sujeto 201/202 cae en un
+    único bloque, sea el que sea la semilla.
+    """
+    X, y, paciente_id = _dataset_sintetico()
+    paciente_id = paciente_id.copy()
+    paciente_id[paciente_id == "108"] = "201"
+    paciente_id[paciente_id == "109"] = "202"
+
+    real = baseline.split_por_paciente
+    captura: dict[str, set[str]] = {}
+
+    def espiar(ids: np.ndarray, **kwargs) -> tuple[np.ndarray, np.ndarray]:
+        train_idx, test_idx = real(ids, **kwargs)
+        captura["train"] = set(ids[train_idx].tolist())
+        captura["test"] = set(ids[test_idx].tolist())
+        return train_idx, test_idx
+
+    monkeypatch.setattr(baseline, "split_por_paciente", espiar)
+    _, metrics = train_baseline(X, y, paciente_id, fs=FS, dataset_id=DATASET_ID)
+
+    assert captura["train"].isdisjoint(captura["test"])  # anti-fuga
+    assert ("201" in captura["train"]) == ("202" in captura["train"])
+    assert ("201" in captura["test"]) == ("202" in captura["test"])
+    assert ("201" in captura["train"]) ^ ("201" in captura["test"])
+    # 10 registros -> 9 sujetos -> ceil(0.2 * 9) = 2 sujetos de test.
+    sujetos_test = {
+        baseline.MULTI_RECORD_SUBJECTS.get(registro, registro)
+        for registro in captura["test"]
+    }
+    assert len(sujetos_test) == 2
+    assert metrics.n_muestras > 0
 
 
 # ---------------------------------------------------------------------------
