@@ -37,10 +37,11 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T15 | Dependencias y CI para ML (wfdb, sklearn)       | @devops     | Hecha ✅ (QA final 4/4 2026-10-14, T15a-d cerradas) | [#18](https://github.com/ALbaz145/ecg-ai/issues/18) |
 | T09 | Pipeline de datos MIT-BIH con wfdb              | @backend    | Hecha ✅ (QA final 5/5 2026-11-09, T09a-d cerradas) | [#12](https://github.com/ALbaz145/ecg-ai/issues/12) |
 | T10 | Baseline scikit-learn, split por paciente      | @backend    | Hecha ✅ (QA: 5/5 sin defectos, 197bbaf, 255 passed) | [#13](https://github.com/ALbaz145/ecg-ai/issues/13) |
-| T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
+| T13 | Validar métricas y matriz de confusión         | @qa         | Hecha ✅ (QA aprobado, real 48 registros: acc 0,5158 sin fuga por registro — corregida a por sujeto en #61; control fuga +16 pts) | [#16](https://github.com/ALbaz145/ecg-ai/issues/16) |
 | T11 | Integrar modelo real en POST /ecg/analyze      | @backend    | Cerrada ✅ (T11a-e + fixes + T14; #14 cerrado 2026-11-10) | [#14](https://github.com/ALbaz145/ecg-ai/issues/14) |
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Hecha ✅ (QA APROBADO, PR #58, 339 backend + 73 frontend) | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Hecha ✅ (QA: APROBADO 5/5 AC, PR #60 + fixes PR #62) | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
+| T61 | Split por sujeto real (201/202) + re-validar métricas | @backend | Hecha ✅ (QA APROBADO re-verificación, PR #65, 350 tests; `MODEL_VERSION` 0.2.0, acc 0,5582) | [#61](https://github.com/ALbaz145/ecg-ai/issues/61) |
 
 ### Desglose T11 — Integrar modelo real en POST /ecg/analyze (padre #14)
 
@@ -155,9 +156,10 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
 - **2026-11-09**: **T10 cerrada** — baseline sklearn (#13, @qa 5/5 sin defectos):
   split por paciente, 14 features de signal.py, 255 tests. PRs #39-#40.
 - **2026-11-09**: **T13 cerrada** — métricas validadas con ENTRENAMIENTO REAL
-  de los 48 registros MIT-BIH (#16, @qa, 0 defectos): split sin fuga (38/10
-  pacientes), accuracy 0,5158 / sens_macro 0,3584 / spec_macro 0,8823, control
-  con fuga +16 pts demuestra que el split importa. Nota F: soporte 4 en test.
+  de los 48 registros MIT-BIH (#16, @qa, 0 defectos): split sin fuga por
+  registro (38/10 pacientes; la fuga residual 201/202 se corrigió en #61),
+  accuracy 0,5158 / sens_macro 0,3584 / spec_macro 0,8823, control con fuga
+  +16 pts demuestra que el split importa. Nota F: soporte 4 en test.
 - **2026-11-09 (pausa)**: siguiente paso al reanudar → **T11 (#14, @backend)**:
   integrar el modelo real (baseline joblib de T10) en `POST /ecg/analyze` →
   luego T14 (#17, @qa) → T12 (#15, @backend) → cierra Fase 2. Backlog #37.
@@ -204,3 +206,16 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   Hallazgo nuevo → issue **#61**: fuga residual 201/202 (mismo sujeto
   partido por el split por registro; prioridad baja-media, retrain +
   re-validación QA). Tests: 339 backend + 73 frontend. Backlog #37.
+- **2026-11-11**: **#61 cerrada — split por sujeto real** — PR #65 (QA
+  APROBADO en re-verificación; primer veredicto RECHAZADO solo por docs,
+  corregido en `510032d`/`83fe726`): `MULTI_RECORD_SUBJECTS = {"202": "201"}`
+  aplicado dentro de `split_por_paciente` (identidad sin 201/202, determinismo
+  y assert anti-fuga sobre registro **y** sujeto intactos; contrato de
+  `paciente_id` sin cambios). Re-entrenamiento real reproducido bit a bit por
+  @qa: **acc 0,5582 / sens_macro 0,5884 / spec_macro 0,8992** (T13:
+  0,5158 / 0,3584 / 0,8823 con test distinto — la partición cambió: 5 de 10
+  sujetos de test distintos), 201 y 202 ambos en train. `MODEL_VERSION`
+  0.1.0 → **0.2.0** (los artefactos antiguos ya no cargan; regenerar con
+  `python -m app.train_model`). `MODEL.md` §9/§11/§13.8/§14.2 + CHANGELOG
+  actualizados (matiz "sin fuga por registro/sujeto", D-2 y O-1 de este PR
+  de cierre), nota en #16. 350 tests backend + 73 frontend. Backlog #37.
