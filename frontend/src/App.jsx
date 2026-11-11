@@ -109,12 +109,17 @@ export default function App() {
       </a>
 
       <header className="encabezado">
-        <div className="encabezado-inner contenedor">
-          <div>
-            <h1>ECG-AI</h1>
-            <p className="tagline">
-              Análisis educativo de electrocardiogramas
-            </p>
+        <div className="encabezado-marca">
+          <div className="encabezado-inner contenedor">
+            <span className="encabezado-logo" aria-hidden="true">
+              ♥
+            </span>
+            <div>
+              <h1>ECG-AI</h1>
+              <p className="tagline">
+                Análisis educativo de electrocardiogramas
+              </p>
+            </div>
           </div>
         </div>
         <Disclaimer />

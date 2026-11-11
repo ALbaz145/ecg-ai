@@ -41,6 +41,19 @@ describe('Contraste WCAG AA de la paleta', () => {
     ['#1d4ed8', '#ffffff', 'enlaces'],
     ['#1d4ed8', '#eff6ff', 'enlace sobre fondo claro'],
     ['#111827', '#f0fdf4', 'resumen del resultado'],
+    // Tema azul/turquesa
+    ['#0f172a', '#f0f7fb', 'texto principal sobre fondo de página'],
+    ['#334155', '#f0f7fb', 'texto secundario sobre fondo de página'],
+    ['#334155', '#ffffff', 'texto secundario sobre tarjeta'],
+    ['#ffffff', '#1e40af', 'encabezado (inicio del degradado)'],
+    ['#ffffff', '#0e7490', 'encabezado y botón (fin del degradado)'],
+    ['#ffffff', '#1e3a8a', 'botón principal en hover (inicio)'],
+    ['#ffffff', '#155e75', 'botón principal en hover (fin)'],
+    ['#0e7490', '#ffffff', 'botón secundario y enlaces'],
+    ['#0e7490', '#ecfeff', 'elemento activo / seleccionado'],
+    ['#0e7490', '#f0f7fb', 'porcentaje de confianza'],
+    ['#0f172a', '#fffbeb', 'resumen con anomalía'],
+    ['#334155', '#f0f7fb', 'etiquetas de datos del resultado'],
   ];
 
   it.each(casosTexto)(
@@ -58,7 +71,10 @@ describe('Contraste WCAG AA de la paleta', () => {
     ['#000000', '#ffffff', 'foco sobre blanco'],
     ['#000000', '#1d4ed8', 'foco sobre botón azul'],
     ['#b45309', '#fef3c7', 'borde de zona anómala'],
-    ['#1d4ed8', '#ffffff', 'línea de la gráfica'],
+    ['#0e7490', '#ffffff', 'línea de la gráfica'],
+    ['#475569', '#ffffff', 'bordes de controles (tema)'],
+    ['#0e7490', '#e2e8f0', 'relleno de la barra de confianza'],
+    ['#0f172a', '#ffffff', 'anillo de foco sobre blanco'],
     ['#b45309', '#ffffff', 'zona anómala sobre blanco'],
   ];
 

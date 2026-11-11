@@ -11,7 +11,13 @@ export default function ResultPanel({ analisis, onVerAnterior }) {
 
   return (
     <div className="resultado">
-      <p className="resultado-resumen" role="status" aria-live="polite">
+      <p
+        className={`resultado-resumen ${
+          analisis.anomalia === 'normal' ? '' : 'resultado-alerta'
+        }`}
+        role="status"
+        aria-live="polite"
+      >
         Análisis completado: {etiqueta} con una
         confianza del {pct}&nbsp;%.
       </p>

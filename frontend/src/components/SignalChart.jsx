@@ -56,7 +56,7 @@ export default function SignalChart({
           width={900}
           height={320}
           data={data}
-          margin={{ top: 28, right: 24, bottom: 40, left: 12 }}
+          margin={{ top: 46, right: 24, bottom: 40, left: 12 }}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -99,10 +99,20 @@ export default function SignalChart({
               label={
                 zonasAnomalas.length <= MAX_ETIQUETAS_ZONAS
                   ? {
-                      value: `⚠ ${etiquetaTipoZona(zona.tipo)}`,
-                      position: 'top',
-                      fill: '#78350f',
-                      fontSize: 12,
+                      // Etiqueta corta y numerada (⚠ 1, ⚠ 2…) que
+                      // corresponde a la lista de abajo; se escalona
+                      // en 3 filas para que no se encimen.
+                      content: ({ viewBox }) => (
+                        <text
+                          x={viewBox.x + 2}
+                          y={viewBox.y - 4 - (i % 3) * 13}
+                          fill="#78350f"
+                          fontSize={12}
+                          fontWeight={700}
+                        >
+                          {`⚠ ${i + 1}`}
+                        </text>
+                      ),
                     }
                   : undefined
               }
@@ -111,7 +121,7 @@ export default function SignalChart({
           <Line
             type="monotone"
             dataKey="y"
-            stroke="#1d4ed8"
+            stroke="#0e7490"
             strokeWidth={1.5}
             dot={false}
             isAnimationActive={false}
@@ -125,8 +135,8 @@ export default function SignalChart({
             )} de ${total.toLocaleString('es')} puntos). `
           : `${total.toLocaleString('es')} muestras. `}
         Las zonas anómalas aparecen sombreadas, con borde punteado y
-        etiqueta de texto (no solo por color), y se listan a
-        continuación.
+        una etiqueta numerada (⚠ 1, ⚠ 2…) que corresponde a la lista
+        de abajo (no dependen solo del color).
       </figcaption>
       <div className="zonas" aria-labelledby="zonas-titulo">
         <h3 id="zonas-titulo">
