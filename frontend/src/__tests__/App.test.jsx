@@ -220,4 +220,26 @@ describe('App — flujo completo (carga → análisis → resultado)', () => {
     const region = await screen.findByTestId('region-viva');
     expect(region).toHaveTextContent('no encontrado');
   });
+
+  it('pie: coherente con modelo heurístico y real, aviso intacto (D4)', () => {
+    render(<App />);
+
+    const pie = screen.getByRole('contentinfo');
+    // Aviso educativo obligatorio, sin debilitar
+    expect(pie).toHaveTextContent(
+      'Herramienta educativa, no es diagnóstico médico',
+    );
+    // Verdadero con ambos vocabularios de modelo
+    expect(pie).toHaveTextContent(
+      'La confianza del modelo heurístico no está calibrada',
+    );
+    expect(pie).toHaveTextContent(
+      'con el modelo real proviene de sus probabilidades',
+    );
+    expect(pie).toHaveTextContent(
+      'En ningún caso sustituye el criterio de un profesional sanitario',
+    );
+    // El texto viejo (falso con modelo real) ya no aparece
+    expect(pie).not.toHaveTextContent('Los resultados del modelo son');
+  });
 });
