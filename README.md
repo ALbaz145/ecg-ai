@@ -4,7 +4,7 @@
 > Proyecto escolar para detectar anomalías en electrocardiogramas con IA.
 > No usar en entornos clínicos ni con datos reales de pacientes.
 
-Flujo del MVP: **subir un ECG (JSON/CSV) → analizarlo con un modelo de IA → mostrar el resultado** (anomalía detectada + nivel de confianza). El análisis usa el **modelo real** si existe el artefacto entrenado (`baseline-sklearn-0.2.0`) y, si no, **cae al modelo heurístico** (`heuristic-mvp-0.1.0`): ver [Modelo real](#modelo-real-entrenar-montar-y-verificar).
+Flujo del programa: **subir un ECG (JSON/CSV) → analizarlo con un modelo de IA → mostrar el resultado** (anomalía detectada + nivel de confianza). El análisis usa el **modelo real** si existe el artefacto entrenado (`baseline-sklearn-0.2.0`) y, si no, **cae al modelo heurístico** (`heuristic-mvp-0.1.0`): ver [Modelo real](#modelo-real-entrenar-montar-y-verificar).
 
 ## Requisitos previos
 
