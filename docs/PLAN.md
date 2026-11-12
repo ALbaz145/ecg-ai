@@ -42,6 +42,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T14 | Pruebas: la API usa el modelo real             | @qa         | Hecha ✅ (QA APROBADO, PR #58, 339 backend + 73 frontend) | [#17](https://github.com/ALbaz145/ecg-ai/issues/17) |
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Hecha ✅ (QA: APROBADO 5/5 AC, PR #60 + fixes PR #62) | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
 | T61 | Split por sujeto real (201/202) + re-validar métricas | @backend | Hecha ✅ (QA APROBADO re-verificación, PR #65, 350 tests; `MODEL_VERSION` 0.2.0, acc 0,5582) | [#61](https://github.com/ALbaz145/ecg-ai/issues/61) |
+| B37 | Backlog menor T09: O-1, O-3, O-5, O-6 | @backend | Hecha ✅ (QA APROBADO con 6 mutaciones, PR #68, 364 tests; `mitbih_load` 100% cobertura) | [#37](https://github.com/ALbaz145/ecg-ai/issues/37) |
 
 ### Desglose T11 — Integrar modelo real en POST /ecg/analyze (padre #14)
 
@@ -219,3 +220,13 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   `python -m app.train_model`). `MODEL.md` §9/§11/§13.8/§14.2 + CHANGELOG
   actualizados (matiz "sin fuga por registro/sujeto", D-2 y O-1 de este PR
   de cierre), nota en #16. 350 tests backend + 73 frontend. Backlog #37.
+- **2026-11-12**: **#37 cerrada — backlog T09** — PR #68 (QA APROBADO, 6
+  mutaciones de verificación): O-5 (`.gitignore` ignora `*.npz` en cualquier
+  ruta + `tests/test_gitignore.py` con skip si no hay git), O-3
+  (`zip(..., strict=True)` en `mitbih_load` y en `model._amplitude_zones`,
+  contrato de longitudes verificado por construcción), O-1 (tests de
+  `p_signal.ndim == 1` y forma de señal inválida) y O-6 (tests de
+  `_check_alignment` y del `continue` de `_purge_incomplete`). Cobertura:
+  `mitbih_load.py` 100%, `mitbih_dataset.py` 99%. 350 → **364 tests**,
+  ruff OK. Nota: el PR #67 (otro colaborador) quedó cerrado sin merge; el
+  trabajo se hizo desde cero en #68. **Fase 2 sin backlog pendiente.**
