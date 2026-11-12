@@ -6,8 +6,14 @@ Interfaz accesible (WCAG AA) para personal médico.
 - `backend/`  - FastAPI + modelo IA
 - `frontend/` - React
 - `db/`       - migraciones y esquemas
-- `infra/`    - Docker, CI/CD
+- `docs/`     - documentación del proyecto (PLAN, MODEL, DB, CHANGELOG)
 - `tests/`    - pruebas
+- `data/`     - gitignored: dataset MIT-BIH y artefacto del modelo (nunca se commitea)
+
+En la raíz del repo (no hay carpeta `infra/`):
+- `docker-compose.yml` - servicios `postgres`, `backend`, `frontend`
+- `.env.example`       - plantilla de variables (los secretos van en `.env` o GitHub Secrets, nunca en el repo)
+- `.github/workflows/` - CI: lint + pruebas en cada pull request
 
 ## Reglas globales
 - Una rama por tarea: feature/<nombre>. Nunca commit directo a main.
