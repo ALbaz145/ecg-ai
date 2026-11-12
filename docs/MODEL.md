@@ -517,14 +517,14 @@ modelo responde:
 | Pieza | Detalle |
 | --- | --- |
 | Env var | `MODEL_PATH` (default `data/models/baseline.joblib`, relativa al WORKDIR); leída en runtime, `~` expandido |
-| CLI | `python -m app.train_model` desde `backend/`: descarga (idempotente) → `build_dataset` → split por sujeto real → imprime métricas por stdout (accuracy, sensibilidad/especificidad macro, matriz de confusión…) y escribe el artefacto. Exit 0/1/2 |
+| CLI | `python -m app.train_model` desde `backend/`: descarga (idempotente) → `build_dataset` → split por sujeto real → imprime métricas por stdout (accuracy, sensibilidad/especificidad macro, matriz de confusión…) y escribe el artefacto. Exit 0/1/2. Las rutas por defecto (`--data-dir`, `--dest`) son relativas al cwd: para que el artefacto caiga en `./data` de la raíz (lo que monta compose) ejecuta `PYTHONPATH=backend python -m app.train_model` **desde la raíz del repo** |
 | Compose | `docker-compose.yml`: `MODEL_PATH: ${MODEL_PATH:-data/models/baseline.joblib}` + volumen **`./data:/app/data:ro`** (el contenedor solo lee) |
 | Git | `*.joblib` y `data/` en `.gitignore`; las pruebas escriben solo en `tmp_path` |
 
 **Pruebas** (T14, issue #17): la suite verifica que la API
 usa el modelo real (versión desde los metadatos del
 artefacto, E2E dataset → respuesta a 360 y 500 Hz) y que el
-fallback emite warning — **339 tests backend + 73 frontend**
+fallback emite warning — **364 tests backend + 73 frontend**
 en verde.
 
 ## 13. Limitaciones del modelo real (léelas antes de usar esto)
