@@ -145,8 +145,12 @@ def _amplitude_zones(
 ) -> list[dict[str, int | str]]:
     """Zonas de los latidos con amplitud R anómala."""
     zones: list[dict[str, int | str]] = []
+    # strict=True: por contrato (ver SignalFeatures) ventanas y
+    # amplitudes se emparejan 1:1 en el mismo bucle de
+    # extract_features; longitudes distintas son un bug, no algo que
+    # deba truncarse en silencio (mismo criterio que O-3, #37).
     for (start, end), amp in zip(
-        features.beat_windows, features.beat_amplitudes_mv
+        features.beat_windows, features.beat_amplitudes_mv, strict=True
     ):
         if amp < R_AMP_LOW_MV:
             tipo: str = ZONE_AMP_LOW

@@ -306,6 +306,71 @@ def test_p_signal_ausente_error_claro(monkeypatch, tmp_path) -> None:
         load_record("100", dest=dest)
 
 
+@pytest.mark.parametrize(
+    "sample,symbol",
+    [
+        ([1586, 1620, 4000], ["N", "A"]),  # symbols más corto que samples
+        ([1586, 1620], ["N", "A", "Q"]),  # symbols más largo que samples
+    ],
+    ids=["symbols-corto", "symbols-largo"],
+)
+def test_load_record_anotaciones_longitudes_distintas_error(
+    monkeypatch, tmp_path, sample, symbol
+) -> None:
+    """``zip(..., strict=True)``: longitudes distintas → ValueError (O-3, #37).
+
+    Sin ``strict=True`` el ``zip`` truncaría en silencio la lista más
+    larga y ``load_record`` devolvería anotaciones incompletas.
+    """
+    fake = FakeWfdb(sample=sample, symbol=symbol)
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    with pytest.raises(ValueError, match=r"zip\(\)"):
+        load_record("100", dest=dest)
+
+    # No hubo truncación silenciosa: la carga falló entera.
+    assert fake.rdann_calls  # sí se intentó leer el .atr
+
+
+# ---------------------------------------------------------------------------
+# Formas de p_signal: un solo canal (1-D) e inválida (O-1, #37)
+# ---------------------------------------------------------------------------
+
+
+def test_load_record_senal_un_canal_1d(monkeypatch, tmp_path) -> None:
+    """Registro de un solo canal: ``p_signal`` 1-D (n,) → señal 1-D (O-1).
+
+    wfdb puede devolver ``p_signal`` como 1-D en registros mono-canale;
+    la rama ``(n,) → (n, 1)`` debe devolver la misma señal y el lead 0
+    sigue siendo válido (el lead 1 ya no).
+    """
+    senal_1d = np.array([0.10, 0.11, 0.12, 0.13, 0.14])
+    fake = FakeWfdb(p_signal=senal_1d, sample=[1], symbol=["N"])
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    record = load_record("100", dest=dest)
+
+    assert record.signal.ndim == 1
+    np.testing.assert_allclose(record.signal, senal_1d)
+    assert record.n_samples == senal_1d.size
+    assert record.annotations == [(1, "N")]
+    # Con un solo canal, lead=0 es válido y lead=1 no.
+    with pytest.raises(IndexError, match="fuera de rango"):
+        load_record("100", lead=1, dest=dest)
+
+
+def test_load_record_forma_senal_invalida_error(monkeypatch, tmp_path) -> None:
+    """``p_signal`` con dimensionalidad no soportada (3-D) → ValueError (O-1)."""
+    fake = FakeWfdb(p_signal=np.zeros((2, 3, 4)))
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    with pytest.raises(ValueError, match="forma de señal inválida"):
+        load_record("100", dest=dest)
+
+
 # ---------------------------------------------------------------------------
 # beat_windows
 # ---------------------------------------------------------------------------
