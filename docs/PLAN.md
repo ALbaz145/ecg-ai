@@ -43,6 +43,7 @@ Flujo completo: **subir un ECG → analizarlo con un modelo de IA → mostrar el
 | T12 | Documentar modelo en docs/MODEL.md             | @backend    | Hecha ✅ (QA: APROBADO 5/5 AC, PR #60 + fixes PR #62) | [#15](https://github.com/ALbaz145/ecg-ai/issues/15) |
 | T61 | Split por sujeto real (201/202) + re-validar métricas | @backend | Hecha ✅ (QA APROBADO re-verificación, PR #65, 350 tests; `MODEL_VERSION` 0.2.0, acc 0,5582) | [#61](https://github.com/ALbaz145/ecg-ai/issues/61) |
 | B37 | Backlog menor T09: O-1, O-3, O-5, O-6 | @backend | Hecha ✅ (QA APROBADO con 6 mutaciones, PR #68, 364 tests; `mitbih_load` 100% cobertura) | [#37](https://github.com/ALbaz145/ecg-ai/issues/37) |
+| D70 | Actualización integral de documentación post-Fase 2 | @backend/@frontend/@devops/@db | Hecha ✅ (QA APROBADO en 5 PRs: #71-#75; fixes D1-D5) | [#70](https://github.com/ALbaz145/ecg-ai/issues/70) |
 
 ### Desglose T11 — Integrar modelo real en POST /ecg/analyze (padre #14)
 
@@ -230,3 +231,21 @@ T01 (infra) ──► T02 (db) ──► T03 (backend) ──► T04 (frontend)
   `mitbih_load.py` 100%, `mitbih_dataset.py` 99%. 350 → **364 tests**,
   ruff OK. Nota: el PR #67 (otro colaborador) quedó cerrado sin merge; el
   trabajo se hizo desde cero en #68. **Fase 2 sin backlog pendiente.**
+- **2026-11-12**: **#70 cerrada — documentación integral post-Fase 2** —
+  5 PRs (todos QA APROBADO): #71 `frontend/README.md` (labels AAMI,
+  estructura real, comandos), #72 `docs/DB.md` (vocabulario dual
+  heurístico+AAMI en `anomalia`/zonas, receta de migración online
+  reescrita — D1: vía principal `docker compose run/exec backend alembic`,
+  desde el host exige publicar el puerto 5432), #73 `backend/README.md`
+  (árbol completo de módulos, contrato API con ambos vocabularios,
+  `confianza` con semántica por modelo, sección de entrenamiento) +
+  `MODEL.md` §12 (364 tests + nota cwd), #74 README raíz (frase stale
+  "issue #1" eliminada, flujo de entrenamiento verificado de punta a
+  punta con E2E docker) + `AGENTS.md` (estructura real) + `.env.example`
+  (flujo corregido: `cd backend` escribía en `backend/data/` y el volumen
+  monta `./data`) + `.dockerignore`/`frontend/.dockerignore` (los
+  contextos de build ya no copian `data/`/`node_modules`) + healthcheck
+  `127.0.0.1` (D2: frontend `unhealthy` por IPv6 → 3/3 healthy), #75 pie
+  de UI coherente con modelo real (D4) + test. Vocabularios idénticos en
+  5 puntos documentales; 364 tests backend + **74** frontend.
+  **Issue #70 cerrado.**
