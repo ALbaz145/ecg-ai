@@ -306,6 +306,33 @@ def test_p_signal_ausente_error_claro(monkeypatch, tmp_path) -> None:
         load_record("100", dest=dest)
 
 
+@pytest.mark.parametrize(
+    "sample,symbol",
+    [
+        ([1586, 1620, 4000], ["N", "A"]),  # symbols más corto que samples
+        ([1586, 1620], ["N", "A", "Q"]),  # symbols más largo que samples
+    ],
+    ids=["symbols-corto", "symbols-largo"],
+)
+def test_load_record_anotaciones_longitudes_distintas_error(
+    monkeypatch, tmp_path, sample, symbol
+) -> None:
+    """``zip(..., strict=True)``: longitudes distintas → ValueError (O-3, #37).
+
+    Sin ``strict=True`` el ``zip`` truncaría en silencio la lista más
+    larga y ``load_record`` devolvería anotaciones incompletas.
+    """
+    fake = FakeWfdb(sample=sample, symbol=symbol)
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    with pytest.raises(ValueError, match=r"zip\(\)"):
+        load_record("100", dest=dest)
+
+    # No hubo truncación silenciosa: la carga falló entera.
+    assert fake.rdann_calls  # sí se intentó leer el .atr
+
+
 # ---------------------------------------------------------------------------
 # beat_windows
 # ---------------------------------------------------------------------------

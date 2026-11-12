@@ -8,6 +8,7 @@ confianza ∈ [0,1] y la forma de las zonas.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from app.model import (
     LABEL_AMPLITUD,
     LABEL_ARRHYTHMIA,
@@ -121,6 +122,21 @@ def test_amplitud_baja_con_zonas() -> None:
     assert deteccion.anomalia == LABEL_AMPLITUD
     assert deteccion.zonas
     assert all(z["tipo"] == "amplitud_baja" for z in deteccion.zonas)
+
+
+def test_amplitudes_y_ventanas_longitudes_distintas_error() -> None:
+    """``zip(..., strict=True)`` en zonas de amplitud (criterio O-3, #37).
+
+    Por contrato (``SignalFeatures``) ``beat_windows`` y
+    ``beat_amplitudes_mv`` se emparejan 1:1 en el mismo bucle de
+    ``extract_features``; una desalineación es un bug que debe fallar
+    ruidosamente, no truncarse en silencio.
+    """
+    features = _features(n_beats=10, r_amplitude_mv=5.0)
+    features.beat_amplitudes_mv.pop()  # desalineación artificial
+
+    with pytest.raises(ValueError, match=r"zip\(\)"):
+        classify(features)
 
 
 def test_normal() -> None:

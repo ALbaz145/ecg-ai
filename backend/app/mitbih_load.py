@@ -163,8 +163,12 @@ def load_record(
     annotation = wfdb.rdann(path, "atr")
     samples = np.asarray(getattr(annotation, "sample", []), dtype=np.int64).ravel()
     symbols = list(getattr(annotation, "symbol", []))
+    # strict=True: si wfdb devolviera samples/symbols de distinta
+    # longitud, zip lanza ValueError en vez de truncar en silencio
+    # anotaciones (issue #37, O-3).
     annotations = [
-        (int(sample), str(symbol)) for sample, symbol in zip(samples, symbols)
+        (int(sample), str(symbol))
+        for sample, symbol in zip(samples, symbols, strict=True)
     ]
 
     return RecordData(
