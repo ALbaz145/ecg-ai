@@ -1,0 +1,50 @@
+# ============================================================
+# .dockerignore — contexto de la RAÍZ del repo
+# ============================================================
+# Lo usa ÚNICAMENTE el build del backend (docker-compose.yml:
+#   build.context = .  ·  dockerfile = backend/Dockerfile
+#   COPY backend/ ./ · COPY db/ ./db/ · COPY alembic.ini ./).
+# El frontend tiene contexto propio (./frontend), ver
+# frontend/.dockerignore: nada de lo de aquí afecta a su build.
+#
+# El backend solo necesita: backend/ (con requirements.txt), db/ y
+# alembic.ini. Todo lo demás —datos, secretos, dependencias de otros
+# lenguajes y basura de desarrollo— fuera del contexto para que la
+# imagen no acumule caché MIT-BIH ni artefactos .joblib obsoletos.
+# ============================================================
+
+# --- Datos y artefactos del modelo (dataset MIT-BIH, .joblib) ---
+data/
+**/data/
+backend/data/
+**/*.joblib
+**/*.npz
+
+# --- Secretos (el .env real; .env.example es solo una plantilla) ---
+.env
+.env.*
+!.env.example
+
+# --- Control de versiones / CI / agentes ---
+.git
+.github
+.opencode
+
+# --- Dependencias y artefactos de build de otros lenguajes ---
+node_modules/
+**/node_modules/
+dist/
+build/
+
+# --- Python: cachés y compilados ---
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.coverage
+
+# --- Documentación, pruebas y config no usada por la imagen ---
+tests/
+docs/
+**/*.md
+ruff.toml
+docker-compose.yml

@@ -1,0 +1,6 @@
+# Contexto del build del frontend (docker-compose.yml:
+#   build.context = ./frontend). Evita subir al daemon la basura del
+#   host: node_modules y dist no deben entrar (npm ci / npm run build
+#   los generan dentro de la imagen).
+node_modules
+dist
