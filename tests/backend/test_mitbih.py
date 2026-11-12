@@ -225,6 +225,31 @@ def test_error_no_os_se_propaga_sin_envolver(monkeypatch, tmp_path) -> None:
     assert not list((tmp_path / "mit-bih").glob("101.*"))
 
 
+def test_purge_conserva_registro_completo_y_borra_incompleto(tmp_path) -> None:
+    """``_purge_incomplete``: el registro completo se conserva (O-6, #37).
+
+    Rama ``continue`` de la purga: un registro con ``.hea``+``.dat``+
+    ``.atr`` intactos (caché previa) no se toca, mientras que uno
+    incompleto se borra entero para no dejar medias descargas.
+    """
+    dest = tmp_path / "mit-bih"
+    dest.mkdir()
+    # Registro completo (los tres sufijos) e incompleto (sin .atr).
+    for suffix in mitbih._SUFFIXES:
+        (dest / f"100{suffix}").write_text("x", encoding="utf-8")
+    (dest / "101.hea").write_text("x", encoding="utf-8")
+    (dest / "101.dat").write_text("x", encoding="utf-8")
+
+    mitbih._purge_incomplete(dest, ["100", "101"])
+
+    # El completo pasa por el continue: sigue cacheado, sin tocar.
+    assert mitbih.is_cached(dest, "100") is True
+    for suffix in mitbih._SUFFIXES:
+        assert (dest / f"100{suffix}").read_text(encoding="utf-8") == "x"
+    # El incompleto se purga entero.
+    assert not list(dest.glob("101.*"))
+
+
 # ---------------------------------------------------------------------------
 # Mitigación D-1 (issue #24): la caché exige .hea + .dat + .atr
 # ---------------------------------------------------------------------------

@@ -373,6 +373,56 @@ def test_check_alignment_rechaza_paciente_id_no_ndarray() -> None:
 
 
 # ---------------------------------------------------------------------------
+# _check_alignment: ramas defensivas de X y dtype de strings (O-6, #37)
+# ---------------------------------------------------------------------------
+
+
+def test_check_alignment_rechaza_x_no_ndarray() -> None:
+    """``X`` en lista → ValueError (nunca AttributeError, O-6)."""
+    with pytest.raises(ValueError, match="X debe ser un ndarray 2-D"):
+        mitbih_dataset._check_alignment(
+            [[0.0] * WIDTH] * 2, np.array(["N", "N"]), np.array(["100", "100"])
+        )
+
+
+def test_check_alignment_rechaza_x_no_2d() -> None:
+    """``X`` ndarray 1-D → ValueError: el contrato exige 2 filas-dimensión."""
+    X = np.zeros(WIDTH, dtype=np.float32)
+
+    with pytest.raises(ValueError, match="X debe ser un ndarray 2-D"):
+        mitbih_dataset._check_alignment(X, np.array(["N"]), np.array(["100"]))
+
+
+def test_check_alignment_rechaza_x_no_float32() -> None:
+    """``X`` float64 → ValueError: el dtype del contrato es float32 (O-6)."""
+    X = np.zeros((2, WIDTH), dtype=np.float64)
+
+    with pytest.raises(ValueError, match="X debe ser float32"):
+        mitbih_dataset._check_alignment(
+            X, np.array(["N", "N"]), np.array(["100", "100"])
+        )
+
+
+@pytest.mark.parametrize("campo", ["y", "paciente_id"], ids=["y", "paciente_id"])
+def test_check_alignment_rechaza_dtype_no_string(campo: str) -> None:
+    """``y``/``paciente_id`` numéricos → ValueError (O-6).
+
+    Un NPZ con ``y`` de códigos enteros no debe pasar la validación de
+    formas en silencio: el contrato de dtype es string.
+    """
+    X = np.zeros((2, WIDTH), dtype=np.float32)
+    y = np.array(["N", "N"])
+    paciente_id = np.array(["100", "100"])
+    if campo == "y":
+        y = np.array([0, 1])  # códigos enteros en vez de letras AAMI
+    else:
+        paciente_id = np.array([100, 101])
+
+    with pytest.raises(ValueError, match="arrays de strings"):
+        mitbih_dataset._check_alignment(X, y, paciente_id)
+
+
+# ---------------------------------------------------------------------------
 # save_dataset / load_dataset: NPZ con metadatos
 # ---------------------------------------------------------------------------
 
