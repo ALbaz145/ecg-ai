@@ -1,4 +1,4 @@
-# Base de datos — ECG-AI (MVP)
+# Base de datos — ECG-AI (esquema actual, Fase 2)
 
 > Proyecto escolar, **NO uso clínico**.
 > **Cero datos reales de pacientes**: todos los ejemplos de este
@@ -6,9 +6,11 @@
 > datos reales; solo datasets públicos (PTB-XL, MIT-BIH, etc.)
 > fuera de la DB.
 
-Este documento describe el esquema mínimo del MVP
-(subir ECG → analizar → mostrar resultado), cómo ejecutar las
-migraciones y cómo @backend consume los modelos.
+Este documento describe el esquema actual (subir ECG → analizar →
+mostrar resultado), cómo ejecutar las migraciones y cómo @backend
+consume los modelos. Sigue sin haber `users`/`patients` (ver §7);
+desde la Fase 2 la columna `anomalia` admite **dos vocabularios**
+según el modelo cargado (ver §3.2).
 
 ---
 
@@ -17,11 +19,19 @@ migraciones y cómo @backend consume los modelos.
 PostgreSQL 16 (servicio `postgres` en `docker-compose.yml`).
 Las credenciales vienen de `.env` (ver `.env.example`):
 
+```bash
+cp .env.example .env    # obligatorio: compose usa `env_file: .env`
+```
+
 ```env
 POSTGRES_USER=ecg
 POSTGRES_PASSWORD=cambia_en_env
 POSTGRES_DB=ecg
 ```
+
+> Sin `.env`, cualquier `docker compose ...` falla con
+> *"env file .env not found"* (verificado con `docker compose
+> config -q`).
 
 La URL de conexión (`DATABASE_URL`) se resuelve así, tanto en
 `db/alembic/env.py` como en el backend (implementación única en
@@ -43,22 +53,77 @@ del proyecto (D2). Las URLs que ya incluyen driver explícito
 tal cual.
 
 > La DB **no** se expone al host en `docker-compose.yml`. Para
-> inspeccionarla desde el host en desarrollo, descomenta el
-> mapeo de puertos del servicio `postgres`.
+> inspeccionarla desde el host en desarrollo, descomента el
+> mapeo de puertos del servicio `postgres`. **Ese paso es también
+> el prerequisito para migrar desde el host** (§2): sin él,
+> `alembic upgrade head` falla con *Connection refused*.
+
+Comandos de levantamiento (desde la raíz, verificados contra el
+`docker-compose.yml` actual: servicios `postgres`, `backend`,
+`frontend`):
+
+```bash
+docker compose up -d postgres   # solo la DB (para migraciones)
+docker compose up -d --build    # todo (README raíz)
+docker compose ps               # estado de los servicios
+docker compose down             # para (el volumen `pgdata` persiste)
+```
 
 ## 2. Ejecutar migraciones
 
 Alembic está configurado en `alembic.ini` (raíz del repo) con
-`script_location = db/alembic`. Se ejecuta **desde la raíz**:
+`script_location = db/alembic`.
+
+### Vía principal: dentro de Docker (recomendada)
+
+La DB **no publica el 5432 al host** (§1), así que la receta
+online fiable es ejecutar Alembic **desde la red interna de
+compose**. Requisito: `.env` creado (§1).
 
 ```bash
-# Online (requiere la DB corriendo: docker compose up -d postgres)
+docker compose up -d postgres
+
+# Opción A: contenedor one-off — no necesita la API corriendo
+docker compose run --rm backend alembic upgrade head
+
+# Opción B: con el backend levantado (idempotente; es exactamente
+# lo que el backend ya ejecuta en su arranque, ver §6)
+docker compose up -d backend
+docker compose exec backend alembic upgrade head
+```
+
+Ambas opciones aplican `alembic upgrade head` y dejan
+`alembic current` en `0001 (head)`.
+
+### Desde el host (opcional, requiere publicar el puerto)
+
+`db/url.py` usa `POSTGRES_HOST=localhost` por defecto, así que
+**para migrar desde el host hay que publicar el 5432 primero**
+(descomentar `ports` del servicio `postgres` en `docker-compose.yml`,
+como indica §1) o bien apuntar `POSTGRES_HOST`/`DATABASE_URL` a esa
+publicación. Sin ese prerequisito el comando **falla** con
+`psycopg2.OperationalError: ... Connection refused` (verificado,
+exit 1).
+
+Requisito de Python en el host: `alembic` instalado (está en
+`backend/requirements.txt`, `alembic>=1.13` — no hay requirements
+en la raíz). Los comandos se ejecutan **desde la raíz del repo**
+(ahí está `alembic.ini`):
+
+```bash
+pip install -r backend/requirements.txt
+
+# Online (con el puerto publicado y la DB corriendo)
 alembic upgrade head          # aplica todas las migraciones
 alembic downgrade -1          # revierte la última migración
 alembic current               # revisión aplicada
 alembic revision --autogenerate -m "..."   # genera nueva migración
+```
 
-# Offline (SIN DB: genera el SQL que se ejecutaría)
+### Offline (SIN DB, siempre disponible)
+
+```bash
+# Genera el SQL que se ejecutaría, sin conexión
 alembic upgrade head --sql
 alembic downgrade 0001:base --sql   # en --sql hay que dar el rango explícito
 ```
@@ -70,11 +135,12 @@ alembic.ini                  # configuración (script_location = db/alembic)
 db/
 ├── __init__.py
 ├── models.py                # modelos SQLAlchemy (fuente de verdad del esquema)
+├── url.py                   # resolve_database_url/normalize_database_url
 └── alembic/
     ├── env.py               # resuelve DATABASE_URL + target_metadata
     ├── script.py.mako       # plantilla de revisiones
     └── versions/
-        └── 20261002_0001_ecg_records_and_analyses.py
+        └── 20261002_0001_ecg_records_and_analyses.py   # revisión "0001"
 ```
 
 Todas las migraciones son **reversibles** (`downgrade` explícito,
@@ -96,14 +162,14 @@ ecg_records                      analyses
                                  └──────────────────────────────┘
 ```
 
-> Nota: las tablas no tienen `users`/`patients` en el MVP (no hay
-> login). Ver §7 "Evolución prevista".
+> Nota: las tablas no tienen `users`/`patients` (aún no hay
+> login; ver §7 "Evolución prevista").
 
 ### 3.1 `ecg_records` — señales ECG subidas
 
-El MVP **no** guarda las muestras de la señal en la DB; solo los
-metadatos (la señal la procesa el backend en memoria/objeto
-storage futuro).
+La tabla **no** guarda las muestras de la señal en la DB; solo
+los metadatos (la señal la procesa el backend en memoria;
+almacenamiento de objetos futuro).
 
 | Columna         | Tipo                     | Restricciones                              |
 | --------------- | ------------------------ | ------------------------------------------ |
@@ -132,11 +198,24 @@ correcto (CHECKs `jsonb_typeof`); la validación semántica
 | --------------- | ------------------------ | ------------------------------------------ |
 | `id`            | `uuid`                   | PK, `DEFAULT gen_random_uuid()`            |
 | `ecg_record_id` | `uuid`                   | NOT NULL, FK → `ecg_records.id` **ON DELETE CASCADE** |
-| `anomalia`      | `text`                   | NOT NULL, no vacío (etiqueta del modelo: `"normal"`, `"taquicardia"`, `"bradicardia"`, `"arritmia"`, `"amplitud_anomala"`, `"ruido_excesivo"`, `"senal_no_valorable"`) |
+| `anomalia`      | `text`                   | NOT NULL, no vacío (etiqueta del modelo; **dos vocabularios** según `model_version`, ver abajo) |
 | `confianza`     | `numeric(4,3)`           | NOT NULL, **CHECK `confianza >= 0 AND confianza <= 1`** |
-| `model_version` | `text`                   | NOT NULL, no vacío (p. ej. `"heuristic-mvp-0.1.0"`) |
+| `model_version` | `text`                   | NOT NULL, no vacío (p. ej. `"heuristic-mvp-0.1.0"` o `"baseline-sklearn-0.2.0"`) |
 | `zonas_anomalas`| `jsonb`                  | NOT NULL, DEFAULT `'[]'::jsonb`, debe ser array |
 | `created_at`    | `timestamptz`            | NOT NULL, `DEFAULT now()`                  |
+
+**Vocabularios de `anomalia` (dos, según `model_version`)** — la
+DB solo exige texto no vacío; el vocabulario exacto lo emite el
+backend según el modelo cargado:
+
+| `model_version` | Origen | Valores de `anomalia` |
+| --- | --- | --- |
+| `"heuristic-mvp-0.1.0"` (o fallback si falta el artefacto real) | reglas, `backend/app/model.py` (`LABEL_*`) | `"normal"`, `"taquicardia"`, `"bradicardia"`, `"arritmia"`, `"amplitud_anomala"`, `"ruido_excesivo"`, `"senal_no_valorable"` |
+| `"baseline-sklearn-0.2.0"` (modelo real, T11b) | clases AAMI, `backend/app/inference.py` (`AAMI_TO_ANOMALIA`) | `"normal"`, `"arritmia_supraventricular"`, `"arritmia_ventricular"`, `"latido_fusion"`, `"clase_desconocida"`, `"senal_no_valorable"` |
+
+(`"senal_no_valorable"` es común a ambos: < 2 latidos evaluables.)
+La elección de vocabulario la hace `backend/app/pipeline.py`; ver
+`docs/MODEL.md` Parte II (modelo real) y §12 "Uso en la API".
 
 **Contrato de `zonas_anomalas`** (ejemplo **ficticio**):
 
@@ -146,17 +225,27 @@ correcto (CHECKs `jsonb_typeof`); la validación semántica
 
 `inicio`/`fin` son **índices de muestra enteros** sobre la
 señal tal como fue subida (`inicio` inclusivo, `fin`
-exclusivo) y `tipo` es una etiqueta del modelo
-(`"latido_irregular"`, `"amplitud_baja"` o
-`"amplitud_alta"`). El CHECK de PostgreSQL solo exige que
-sea un array JSONB; la semántica de cada elemento la
-valida el backend con Pydantic.
+exclusivo) y `tipo` es una etiqueta del modelo. El CHECK de
+PostgreSQL solo exige que sea un array JSONB; la semántica de
+cada elemento la valida el backend con Pydantic. Como con
+`anomalia`, el vocabulario de `tipo` depende del modelo:
 
-**Ejemplo de fila (datos inventados):**
+- **Heurístico** (`backend/app/model.py`): `"latido_irregular"`,
+  `"amplitud_baja"`, `"amplitud_alta"`; para anomalías de toda la
+  señal la zona cubre `[0, n_samples)` con `tipo` = la propia
+  etiqueta (`"ruido_excesivo"`, `"taquicardia"`, `"bradicardia"`);
+  `"normal"` y `"senal_no_valorable"` llevan `[]`.
+- **Real** (`AAMI_TO_ZONA` en `backend/app/inference.py`): una
+  zona por latido no-normal: `"latido_supraventricular"`,
+  `"latido_ventricular"`, `"latido_fusion"`, `"latido_desconocido"`;
+  `"normal"` y `"senal_no_valorable"` llevan `[]`.
+
+**Ejemplos de fila (datos inventados):**
 
 | anomalia | confianza | model_version | zonas_anomalas |
 | --- | --- | --- | --- |
-| `amplitud_anomala` | `0.987` | `heuristic-mvp-0.1.0` | `[{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}]` |
+| `amplitud_anomala` (heurístico) | `0.987` | `heuristic-mvp-0.1.0` | `[{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}]` |
+| `arritmia_supraventricular` (real/AAMI) | `0.912` | `baseline-sklearn-0.2.0` | `[{"inicio": 480, "fin": 612, "tipo": "latido_supraventricular"}]` |
 
 ### 3.3 Restricciones (CHECKs)
 
@@ -186,7 +275,7 @@ simples, pero documenta la intención y beneficia a planes
 `ORDER BY ... DESC LIMIT` con índices compuestos.
 
 No se indexa `anomalia` (cardinalidad baja y sin consultas de
-filtro previstas en el MVP). Reevaluar si aparece filtrado por
+filtro previstas en la Fase 2). Reevaluar si aparece filtrado por
 anomalía.
 
 ## 5. Decisiones de diseño
@@ -225,7 +314,7 @@ engine = create_engine(DATABASE_URL)
 # `docker compose exec backend alembic upgrade head`).
 ```
 
-Ejemplo de uso:
+Ejemplo de uso (datos **inventados**; vocabulario heurístico):
 
 ```python
 registro = EcgRecord(
@@ -240,6 +329,21 @@ session.add(Analysis(
     confianza=Decimal("0.987"),
     model_version="heuristic-mvp-0.1.0",
     zonas_anomalas=[{"inicio": 120, "fin": 145, "tipo": "amplitud_baja"}],
+))
+session.commit()
+```
+
+Segundo ejemplo con el **vocabulario AAMI/real** (mismo esquema;
+valores inventados):
+
+```python
+session.add(Analysis(
+    ecg_record_id=registro.id,               # el mismo registro
+    anomalia="arritmia_supraventricular",    # AAMI_TO_ANOMALIA["S"]
+    confianza=Decimal("0.912"),              # media de predict_proba
+    model_version="baseline-sklearn-0.2.0",
+    zonas_anomalas=[{"inicio": 480, "fin": 612,
+                     "tipo": "latido_supraventricular"}],
 ))
 session.commit()
 ```
@@ -261,8 +365,11 @@ contenedor y **el comando de migración en el contenedor es**:
 docker compose exec backend alembic upgrade head
 ```
 
-En producción conviene ejecutar `alembic upgrade head` en el
-arranque del contenedor (no `Base.metadata.create_all`).
+Además el backend **ya ejecuta `alembic upgrade head` en el
+arranque** (`_run_migrations` en `backend/app/main.py`, vía
+`lifespan`; fail fast si falla). Se puede saltar con
+`ECG_SKIP_MIGRATIONS=1` (p. ej. con la DB ya migrada). En ningún
+caso se usa `Base.metadata.create_all`.
 Las pruebas del esquema también corren desde la raíz del
 repo (ven §8).
 
@@ -275,16 +382,16 @@ repo (ven §8).
 - Cuando haya DB: `alembic revision --autogenerate` debe producir
   diff vacío contra `target_metadata = Base.metadata`.
 
-## 7. Evolución prevista (fuera del MVP)
+## 7. Evolución prevista (no implementada aún)
 
 El esquema completo del proyecto contempla, en milestones
 posteriores (issues futuros):
 
 - **`users`**: cuentas del personal médico (login, `password_hash`,
-  `rol`). No en el MVP — no hay login.
+  `rol`). Todavía no existe — no hay login en la Fase 2.
 - **`patients`**: **siempre anónimos/ficticios** (p. ej.
-  `codigo_anonimo`, sin nombre/identificadores reales). El MVP no
-  la necesita: un `ecg_record` es un análisis puntual.
+  `codigo_anonimo`, sin nombre/identificadores reales). Aún no se
+  necesita: un `ecg_record` es un análisis puntual.
 - **`audit_log`**: trazabilidad de acciones (quién, cuándo, qué)
   sobre registros y análisis. Requiere `users`.
 
@@ -293,8 +400,8 @@ Añadirlas será una migración Alembic adicional reversible
 
 ## 8. Verificación realizada
 
-Estado: **verificado offline (sin DB)** — no hay daemon de Docker
-ni PostgreSQL en el entorno de autoría.
+Estado: **verificado offline (DDL sin DB) y online (Docker)** en
+la rama de `docs/DB.md` (issue #70 / defecto D1 de QA).
 
 | Criterio | Resultado |
 | --- | --- |
@@ -302,10 +409,14 @@ ni PostgreSQL en el entorno de autoría.
 | `alembic downgrade 0001:base --sql` | ✅ Revierte todo: DROP INDEX (3) → DROP TABLE `analyses` → DROP TABLE `ecg_records` (orden correcto por FK) |
 | FK e índices presentes | ✅ En el SQL generado y en `db/models.py` (test `test_fk_en_cascada`, `test_indices_presentes`) |
 | CHECK confianza ∈ [0,1] | ✅ `ck_analyses_confianza_range` en migración, modelo y test `test_check_confianza_entre_0_y_1` |
+| `docker compose config -q` | ✅ Válido (con `.env` creado desde `.env.example`); servicios: `postgres`, `backend`, `frontend` |
+| **Online — vía principal, `docker compose run --rm backend alembic upgrade head`** | ✅ exit 0; `alembic current` → `0001 (head)` |
+| **Online — `docker compose exec backend alembic upgrade head` (backend levantado)** | ✅ exit 0; `alembic current` → `0001 (head)` |
+| **Arranque del backend aplica migraciones** (§6) | ✅ tras `alembic downgrade -1` + `docker compose restart backend` → `0001 (head)` |
+| **Online — desde el host con el puerto publicado** | ✅ `alembic downgrade -1` y `alembic upgrade head` exit 0 (mapeo `127.0.0.1:5432` temporal; `docker-compose.yml` revertido, sin cambios en el repo) |
+| **D1 reproducido — host SIN publicar el puerto** | ✅ exit 1 con `psycopg2.OperationalError: ... port 5432 ... Connection refused` → motivo por el que §2 recomienda la vía Docker |
+| Limpieza tras la verificación | ✅ `docker compose down` (+ volumen): 0 contenedores, 0 redes y 0 volúmenes `ecg-ai` |
+| Vocabularios citados en §3.2 | ✅ Coinciden con `AAMI_TO_ANOMALIA`/`AAMI_TO_ZONA` (`backend/app/inference.py`) y `LABEL_*` (`backend/app/model.py`) |
 | `docs/DB.md` existe | ✅ Este documento |
 | Cero datos personales reales | ✅ Solo ejemplos ficticios (`muestra_ficticia_001.json`, metadatos inventados) |
-| Pruebas (`python -m unittest discover -s tests -v`) | ✅ Ver ejecutado junto a esta rama |
-
-Pendiente para QA (con Docker disponible): `docker compose up -d
-postgres && alembic upgrade head && alembic downgrade -1 &&
-alembic upgrade head` online.
+| Pruebas (`python -m pytest tests/ -q`, comando de CI) | ✅ 364 passed en esta rama |
