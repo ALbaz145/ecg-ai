@@ -27,6 +27,9 @@ data/
 *.dat
 *.hea
 *.atr
+# Datasets serializados (T09c): en cualquier ruta, no solo dentro de
+# data/ (un NPZ fuera de data/ sería commiteable — issue #37, O-5).
+*.npz
 
 # Artefactos de entrenamiento/inferencia: se regeneran, no se versionan.
 *.pkl
