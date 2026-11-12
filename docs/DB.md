@@ -53,8 +53,10 @@ del proyecto (D2). Las URLs que ya incluyen driver explícito
 tal cual.
 
 > La DB **no** se expone al host en `docker-compose.yml`. Para
-> inspeccionarla desde el host en desarrollo, descomenta el
-> mapeo de puertos del servicio `postgres`.
+> inspeccionarla desde el host en desarrollo, descomента el
+> mapeo de puertos del servicio `postgres`. **Ese paso es también
+> el prerequisito para migrar desde el host** (§2): sin él,
+> `alembic upgrade head` falla con *Connection refused*.
 
 Comandos de levantamiento (desde la raíz, verificados contra el
 `docker-compose.yml` actual: servicios `postgres`, `backend`,
@@ -70,28 +72,61 @@ docker compose down             # para (el volumen `pgdata` persiste)
 ## 2. Ejecutar migraciones
 
 Alembic está configurado en `alembic.ini` (raíz del repo) con
-`script_location = db/alembic`. Se ejecuta **desde la raíz**.
-Requisito: `alembic` instalado (está en `backend/requirements.txt`,
-`alembic>=1.13` — no hay requirements en la raíz):
+`script_location = db/alembic`.
+
+### Vía principal: dentro de Docker (recomendada)
+
+La DB **no publica el 5432 al host** (§1), así que la receta
+online fiable es ejecutar Alembic **desde la red interna de
+compose**. Requisito: `.env` creado (§1).
+
+```bash
+docker compose up -d postgres
+
+# Opción A: contenedor one-off — no necesita la API corriendo
+docker compose run --rm backend alembic upgrade head
+
+# Opción B: con el backend levantado (idempotente; es exactamente
+# lo que el backend ya ejecuta en su arranque, ver §6)
+docker compose up -d backend
+docker compose exec backend alembic upgrade head
+```
+
+Ambas opciones aplican `alembic upgrade head` y dejan
+`alembic current` en `0001 (head)`.
+
+### Desde el host (opcional, requiere publicar el puerto)
+
+`db/url.py` usa `POSTGRES_HOST=localhost` por defecto, así que
+**para migrar desde el host hay que publicar el 5432 primero**
+(descomentar `ports` del servicio `postgres` en `docker-compose.yml`,
+como indica §1) o bien apuntar `POSTGRES_HOST`/`DATABASE_URL` a esa
+publicación. Sin ese prerequisito el comando **falla** con
+`psycopg2.OperationalError: ... Connection refused` (verificado,
+exit 1).
+
+Requisito de Python en el host: `alembic` instalado (está en
+`backend/requirements.txt`, `alembic>=1.13` — no hay requirements
+en la raíz). Los comandos se ejecutan **desde la raíz del repo**
+(ahí está `alembic.ini`):
 
 ```bash
 pip install -r backend/requirements.txt
-```
 
-```bash
-# Online (requiere la DB corriendo: docker compose up -d postgres)
+# Online (con el puerto publicado y la DB corriendo)
 alembic upgrade head          # aplica todas las migraciones
 alembic downgrade -1          # revierte la última migración
 alembic current               # revisión aplicada
 alembic revision --autogenerate -m "..."   # genera nueva migración
+```
 
-# Offline (SIN DB: genera el SQL que se ejecutaría)
+### Offline (SIN DB, siempre disponible)
+
+```bash
+# Genera el SQL que se ejecutaría, sin conexión
 alembic upgrade head --sql
 alembic downgrade 0001:base --sql   # en --sql hay que dar el rango explícito
 ```
-
-(Equivalente dentro del contenedor: `docker compose exec backend
-alembic upgrade head` — ver §6.)
 
 Estructura:
 
@@ -365,9 +400,8 @@ Añadirlas será una migración Alembic adicional reversible
 
 ## 8. Verificación realizada
 
-Estado: **verificado offline (sin DB)** — no hay daemon de Docker
-ni PostgreSQL en el entorno de autoría (reverificado en la rama de
-`docs/DB.md`, issue #70).
+Estado: **verificado offline (DDL sin DB) y online (Docker)** en
+la rama de `docs/DB.md` (issue #70 / defecto D1 de QA).
 
 | Criterio | Resultado |
 | --- | --- |
@@ -376,11 +410,13 @@ ni PostgreSQL en el entorno de autoría (reverificado en la rama de
 | FK e índices presentes | ✅ En el SQL generado y en `db/models.py` (test `test_fk_en_cascada`, `test_indices_presentes`) |
 | CHECK confianza ∈ [0,1] | ✅ `ck_analyses_confianza_range` en migración, modelo y test `test_check_confianza_entre_0_y_1` |
 | `docker compose config -q` | ✅ Válido (con `.env` creado desde `.env.example`); servicios: `postgres`, `backend`, `frontend` |
+| **Online — vía principal, `docker compose run --rm backend alembic upgrade head`** | ✅ exit 0; `alembic current` → `0001 (head)` |
+| **Online — `docker compose exec backend alembic upgrade head` (backend levantado)** | ✅ exit 0; `alembic current` → `0001 (head)` |
+| **Arranque del backend aplica migraciones** (§6) | ✅ tras `alembic downgrade -1` + `docker compose restart backend` → `0001 (head)` |
+| **Online — desde el host con el puerto publicado** | ✅ `alembic downgrade -1` y `alembic upgrade head` exit 0 (mapeo `127.0.0.1:5432` temporal; `docker-compose.yml` revertido, sin cambios en el repo) |
+| **D1 reproducido — host SIN publicar el puerto** | ✅ exit 1 con `psycopg2.OperationalError: ... port 5432 ... Connection refused` → motivo por el que §2 recomienda la vía Docker |
+| Limpieza tras la verificación | ✅ `docker compose down` (+ volumen): 0 contenedores, 0 redes y 0 volúmenes `ecg-ai` |
 | Vocabularios citados en §3.2 | ✅ Coinciden con `AAMI_TO_ANOMALIA`/`AAMI_TO_ZONA` (`backend/app/inference.py`) y `LABEL_*` (`backend/app/model.py`) |
 | `docs/DB.md` existe | ✅ Este documento |
 | Cero datos personales reales | ✅ Solo ejemplos ficticios (`muestra_ficticia_001.json`, metadatos inventados) |
 | Pruebas (`python -m pytest tests/ -q`, comando de CI) | ✅ 364 passed en esta rama |
-
-Pendiente para QA (con Docker disponible): `docker compose up -d
-postgres && alembic upgrade head && alembic downgrade -1 &&
-alembic upgrade head` online.
