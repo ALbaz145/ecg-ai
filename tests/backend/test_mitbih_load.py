@@ -296,6 +296,43 @@ def test_fs_invalida_error_claro(monkeypatch, tmp_path) -> None:
         load_record("100", dest=dest)
 
 
+def test_p_signal_1d_se_trata_como_un_solo_canal(monkeypatch, tmp_path) -> None:
+    """O-1: un registro de un canal (p_signal 1-D) se lee como (n, 1)."""
+    senal = np.linspace(0.0, 0.9, 10)
+    fake = FakeWfdb(p_signal=senal)
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    record = load_record("100", dest=dest)
+
+    assert record.n_samples == 10
+    assert record.signal.shape == (10,)
+    np.testing.assert_allclose(record.signal, senal)
+    # Solo existe el canal 0: pedir otro es IndexError claro.
+    with pytest.raises(IndexError, match="1 canal"):
+        load_record("100", lead=1, dest=dest)
+
+
+def test_forma_de_senal_invalida_error_claro(monkeypatch, tmp_path) -> None:
+    """Una señal con más de 2 dimensiones es ValueError con el ID."""
+    fake = FakeWfdb(p_signal=np.zeros((2, 2, 2)))
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    with pytest.raises(ValueError, match="forma de señal inválida"):
+        load_record("100", dest=dest)
+
+
+def test_anotaciones_de_longitud_distinta_error(monkeypatch, tmp_path) -> None:
+    """O-3: muestras y símbolos desalineados fallan, no se truncan en silencio."""
+    fake = FakeWfdb(sample=[1586, 1620, 4000], symbol=["N", "A"])
+    _install_fake(monkeypatch, fake)
+    dest = _make_cached(tmp_path / "mit-bih")
+
+    with pytest.raises(ValueError, match="zip"):
+        load_record("100", dest=dest)
+
+
 def test_p_signal_ausente_error_claro(monkeypatch, tmp_path) -> None:
     """wfdb sin señal física legible → ValueError con el ID del registro."""
     fake = FakeWfdb(p_signal=None)

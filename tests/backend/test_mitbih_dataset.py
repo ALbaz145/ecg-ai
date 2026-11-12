@@ -364,6 +364,45 @@ def test_check_alignment_rechaza_y_no_ndarray() -> None:
         mitbih_dataset._check_alignment(X, ["N", "N"], np.array(["100", "100"]))
 
 
+@pytest.mark.parametrize(
+    "X",
+    [
+        pytest.param([[0.0] * WIDTH] * 2, id="lista"),
+        pytest.param(np.zeros(WIDTH, dtype=np.float32), id="ndarray-1D"),
+    ],
+)
+def test_check_alignment_rechaza_x_no_2d_ndarray(X) -> None:
+    """O-6: ``X`` que no es un ndarray 2-D → ValueError que nombra el campo."""
+    y = np.array(["N", "N"])
+    ids = np.array(["100", "100"])
+
+    with pytest.raises(ValueError, match="X debe ser un ndarray 2-D"):
+        mitbih_dataset._check_alignment(X, y, ids)
+
+
+def test_check_alignment_rechaza_x_no_float32() -> None:
+    """O-6: ``X`` float64 (no float32) → ValueError que menciona el dtype."""
+    X = np.zeros((2, WIDTH), dtype=np.float64)
+
+    with pytest.raises(ValueError, match="X debe ser float32"):
+        mitbih_dataset._check_alignment(X, np.array(["N", "N"]), np.array(["1", "1"]))
+
+
+@pytest.mark.parametrize(
+    ("y", "paciente_id"),
+    [
+        pytest.param(np.array([0, 1]), np.array(["100", "100"]), id="y-numerico"),
+        pytest.param(np.array(["N", "N"]), np.array([100, 100]), id="id-numerico"),
+    ],
+)
+def test_check_alignment_rechaza_dtypes_no_string(y, paciente_id) -> None:
+    """O-6: ``y``/``paciente_id`` con dtype no-string → ValueError."""
+    X = np.zeros((2, WIDTH), dtype=np.float32)
+
+    with pytest.raises(ValueError, match="arrays de strings"):
+        mitbih_dataset._check_alignment(X, y, paciente_id)
+
+
 def test_check_alignment_rechaza_paciente_id_no_ndarray() -> None:
     """``paciente_id`` en lista → ValueError que nombra el campo."""
     X = np.zeros((2, WIDTH), dtype=np.float32)

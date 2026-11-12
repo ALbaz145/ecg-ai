@@ -27,6 +27,8 @@ data/
 *.dat
 *.hea
 *.atr
+# Datasets NPZ generados (T09d): ignorados en cualquier ruta, no solo data/.
+*.npz
 
 # Artefactos de entrenamiento/inferencia: se regeneran, no se versionan.
 *.pkl

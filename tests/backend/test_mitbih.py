@@ -263,3 +263,19 @@ def test_d1_sin_atr_se_vuelve_a_descargar(monkeypatch, tmp_path) -> None:
     assert fake.dl_calls[0]["records"] == ["100", "101"]
     assert (dest / "100.atr").is_file()
     assert mitbih.is_cached(dest, "100") is True
+
+
+def test_purge_incomplete_conserva_registro_completo(tmp_path) -> None:
+    """O-6: un registro con .hea+.dat+.atr se conserva; el incompleto se borra."""
+    dest = tmp_path / "mit-bih"
+    dest.mkdir()
+    for suffix in mitbih._SUFFIXES:
+        (dest / f"100{suffix}").write_text("x", encoding="utf-8")
+    # 101 quedó a medias: falta el .atr.
+    (dest / "101.hea").write_text("x", encoding="utf-8")
+    (dest / "101.dat").write_text("x", encoding="utf-8")
+
+    mitbih._purge_incomplete(dest, ["100", "101"])
+
+    assert mitbih.is_cached(dest, "100") is True
+    assert not list(dest.glob("101.*"))

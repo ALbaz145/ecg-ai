@@ -164,7 +164,8 @@ def load_record(
     samples = np.asarray(getattr(annotation, "sample", []), dtype=np.int64).ravel()
     symbols = list(getattr(annotation, "symbol", []))
     annotations = [
-        (int(sample), str(symbol)) for sample, symbol in zip(samples, symbols)
+        (int(sample), str(symbol))
+        for sample, symbol in zip(samples, symbols, strict=True)
     ]
 
     return RecordData(
