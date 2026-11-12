@@ -192,9 +192,10 @@ export default function App() {
       <footer className="pie contenedor">
         <p>
           <strong>Herramienta educativa, no es diagnóstico
-          médico.</strong> Los resultados del modelo son
-          heurísticos, no están calibrados y no sustituyen el
-          criterio de un profesional sanitario.
+          médico.</strong> La confianza del modelo heurístico no
+          está calibrada; con el modelo real proviene de sus
+          probabilidades. En ningún caso sustituye el criterio
+          de un profesional sanitario.
         </p>
         <p>
           ECG-AI · Proyecto escolar · Datos de prueba públicos
